@@ -3,14 +3,13 @@ import { BrowserRouter as Router } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import AppRouter from './routes/AppRouter';
 import { AuthProvider } from './context/AuthContext';
-// We will create the CartProvider later
-// import { CartProvider } from './context/CartContext';
+import { CartProvider } from './context/CartContext';
 
 function App() {
   return (
     <Router>
       <AuthProvider>
-        {/* <CartProvider> */}
+        <CartProvider>
           <div className="min-h-screen bg-brand-light-gray">
             <AppRouter />
           </div>
@@ -24,10 +23,11 @@ function App() {
               },
             }}
           />
-        {/* </CartProvider> */}
+        </CartProvider>
       </AuthProvider>
     </Router>
   );
 }
 
 export default App;
+

@@ -1,24 +1,25 @@
-import mongoose, { Schema } from 'mongoose';
+import mongoose from 'mongoose';
 
-const reviewSchema = new Schema(
+const reviewSchema = new mongoose.Schema(
   {
-    studentId: {
-      type: Schema.Types.ObjectId,
+    // FIX: Changed 'studentId' to 'user' to match other models
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
-      index: true,
     },
-    canteenId: {
-      type: Schema.Types.ObjectId,
+    // FIX: Changed 'canteenId' to 'canteen' to match other models
+    canteen: {
+      type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
-      index: true,
     },
-    orderId: {
-      type: Schema.Types.ObjectId,
+    // FIX: Changed 'orderId' to 'order' to match other models
+    order: {
+      type: mongoose.Schema.Types.ObjectId,
       ref: 'Order',
       required: true,
-      unique: true, // Ensures one review per order
+      unique: true, // A user should only be able to review an order once
     },
     rating: {
       type: Number,
@@ -28,7 +29,7 @@ const reviewSchema = new Schema(
     },
     comment: {
       type: String,
-      trim: true,
+      required: false,
     },
   },
   {

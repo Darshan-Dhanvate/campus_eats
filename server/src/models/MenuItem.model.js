@@ -1,48 +1,40 @@
-import mongoose, { Schema } from 'mongoose';
+import mongoose from 'mongoose';
 
-const menuItemSchema = new Schema(
+const menuItemSchema = new mongoose.Schema(
   {
-    canteenId: {
-      type: Schema.Types.ObjectId,
+    canteen: {
+      type: mongoose.Schema.ObjectId,
       ref: 'User',
       required: true,
-      index: true, // Index for faster queries by canteen
     },
     name: {
       type: String,
-      required: [true, 'Item name is required.'],
+      required: [true, 'Please add a name for the menu item'],
       trim: true,
     },
     description: {
       type: String,
-      required: [true, 'Item description is required.'],
-      trim: true,
+      required: [true, 'Please add a description'],
     },
     price: {
       type: Number,
-      required: [true, 'Item price is required.'],
+      required: [true, 'Please add a price'],
     },
     category: {
       type: String,
-      required: [true, 'Item category is required.'],
-      trim: true,
+      required: [true, 'Please add a category (e.g., Snacks, Main Course)'],
     },
     imageUrl: {
       type: String,
-      required: [true, 'Item image is required.'],
+      // FIX: Removed the 'required' validation to make it optional
     },
     prepTime: {
-      type: Number, // Estimated preparation time in minutes
-      required: true,
+      type: Number, // Preparation time in minutes
     },
-    inStock: {
+    isAvailable: {
       type: Boolean,
       default: true,
     },
-    tags: {
-        type: [String], // e.g., ['veg', 'spicy', 'best-seller']
-        default: []
-    }
   },
   {
     timestamps: true,

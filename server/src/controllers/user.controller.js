@@ -7,7 +7,6 @@ import { asyncHandler } from '../utils/asyncHandler.js';
  * @access Private
  */
 const getUserProfile = asyncHandler(async (req, res) => {
-  // The user object is attached to the request by the 'protect' middleware
   const user = await User.findById(req.user._id).select('-password');
 
   if (user) {
@@ -33,31 +32,21 @@ const updateUserProfile = asyncHandler(async (req, res) => {
 
   // Common fields for both students and canteens
   user.name = req.body.name || user.name;
-  user.email = req.body.email || user.email;
   
   if (req.body.password) {
-    user.password = req.body.password;
+    user.password = req.body.password; // The pre-save hook will hash it
   }
 
   // Role-specific fields
   if (user.role === 'student') {
-    user.studentDetails.studentId = req.body.studentId || user.studentDetails.studentId;
     user.studentDetails.phone = req.body.phone || user.studentDetails.phone;
-    user.studentDetails.college = req.body.college || user.studentDetails.college;
-    user.studentDetails.address = req.body.address || user.studentDetails.address;
+    // Add other student fields as needed
   } else if (user.role === 'canteen') {
-    // Canteen specific details from the body
-    const { canteenName, ownerName, phone, address, operatingHours, cuisineTypes, description, isOpen } = req.body;
+    const { canteenName, canteenAddress, phone, isOpen } = req.body;
     
-    // The main user 'name' is the owner's name
-    user.name = ownerName || user.name;
-
     user.canteenDetails.canteenName = canteenName || user.canteenDetails.canteenName;
+    user.canteenDetails.canteenAddress = canteenAddress || user.canteenDetails.canteenAddress;
     user.canteenDetails.phone = phone || user.canteenDetails.phone;
-    user.canteenDetails.address = address || user.canteenDetails.address;
-    user.canteenDetails.operatingHours = operatingHours || user.canteenDetails.operatingHours;
-    user.canteenDetails.cuisineTypes = cuisineTypes || user.canteenDetails.cuisineTypes;
-    user.canteenDetails.description = description || user.canteenDetails.description;
 
     // Handle the open/closed toggle
     if (isOpen !== undefined) {
@@ -67,14 +56,11 @@ const updateUserProfile = asyncHandler(async (req, res) => {
 
   const updatedUser = await user.save();
 
-  res.status(200).json({
-    _id: updatedUser._id,
-    name: updatedUser.name,
-    email: updatedUser.email,
-    role: updatedUser.role,
-    studentDetails: updatedUser.studentDetails,
-    canteenDetails: updatedUser.canteenDetails,
-  });
+  // Return a comprehensive user object
+  const userResponse = await User.findById(updatedUser._id).select('-password');
+
+  res.status(200).json(userResponse);
 });
 
 export { getUserProfile, updateUserProfile };
+

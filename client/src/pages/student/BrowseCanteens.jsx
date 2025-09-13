@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import api from '../../api/axiosConfig';
 import toast from 'react-hot-toast';
 import CanteenCard from '../../components/student/CanteenCard'; 
+import FilterSidebar from '../../components/student/FilterSidebar';
 
 const SearchIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -19,6 +20,8 @@ const BrowseCanteens = () => {
     const [canteens, setCanteens] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [activeFilters, setActiveFilters] = useState({ cuisines: [] });
 
     useEffect(() => {
         const fetchCanteens = async () => {
@@ -28,18 +31,29 @@ const BrowseCanteens = () => {
                 setCanteens(data);
             } catch (error) {
                 toast.error('Could not fetch canteens. Please try again.');
-                console.error("Fetch Canteens Error:", error);
             } finally {
                 setLoading(false);
             }
         };
-
         fetchCanteens();
     }, []);
     
-    const filteredCanteens = canteens.filter(canteen => 
-        canteen.canteenDetails.canteenName.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const handleApplyFilters = (filters) => {
+        setActiveFilters(filters);
+    };
+
+    const filteredCanteens = useMemo(() => {
+        return canteens.filter(canteen => {
+            const nameMatch = canteen.canteenDetails.canteenName.toLowerCase().includes(searchTerm.toLowerCase());
+            
+            const cuisineMatch = activeFilters.cuisines.length === 0 || 
+                activeFilters.cuisines.some(cuisine => 
+                    canteen.canteenDetails.cuisineTypes?.includes(cuisine)
+                );
+
+            return nameMatch && cuisineMatch;
+        });
+    }, [canteens, searchTerm, activeFilters]);
 
     const SkeletonCard = () => (
         <div className="bg-white rounded-lg shadow-lg overflow-hidden animate-pulse">
@@ -53,50 +67,59 @@ const BrowseCanteens = () => {
         </div>
     );
 
-
     return (
-        <div>
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold text-brand-dark-blue">Browse Canteens</h1>
+        <>
+            <div>
+                <div className="mb-8">
+                    <h1 className="text-3xl font-bold text-brand-dark-blue">Browse Canteens</h1>
+                </div>
+
+                <div className="flex flex-col sm:flex-row justify-between items-center mb-6 bg-white p-4 rounded-lg shadow-sm">
+                    <div className="relative w-full sm:w-auto sm:flex-grow mr-0 sm:mr-4">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <SearchIcon />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Search canteens..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-brand-green focus:border-brand-green"
+                        />
+                    </div>
+                    <button 
+                        onClick={() => setIsFilterOpen(true)}
+                        className="w-full sm:w-auto mt-4 sm:mt-0 flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                    >
+                        <FilterIcon />
+                        Filters
+                    </button>
+                </div>
+                
+                {loading ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {[...Array(3)].map((_, i) => <SkeletonCard key={i} />)}
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {filteredCanteens.length > 0 ? (
+                            filteredCanteens.map(canteen => (
+                                <CanteenCard key={canteen._id} canteen={canteen} />
+                            ))
+                        ) : (
+                            <p className="col-span-full text-center text-gray-500">No canteens found matching your criteria.</p>
+                        )}
+                    </div>
+                )}
             </div>
 
-            {/* Search and Filter Bar */}
-            <div className="flex flex-col sm:flex-row justify-between items-center mb-6 bg-white p-4 rounded-lg shadow-sm">
-                <div className="relative w-full sm:w-auto sm:flex-grow mr-0 sm:mr-4">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <SearchIcon />
-                    </div>
-                    <input
-                        type="text"
-                        placeholder="Search canteens..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-brand-green focus:border-brand-green"
-                    />
-                </div>
-                <button className="w-full sm:w-auto mt-4 sm:mt-0 flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                    <FilterIcon />
-                    Filters
-                </button>
-            </div>
-            
-            {/* Canteen Grid */}
-            {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {[...Array(3)].map((_, i) => <SkeletonCard key={i} />)}
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {filteredCanteens.length > 0 ? (
-                        filteredCanteens.map(canteen => (
-                            <CanteenCard key={canteen._id} canteen={canteen} />
-                        ))
-                    ) : (
-                        <p className="col-span-full text-center text-gray-500">No canteens found matching your search.</p>
-                    )}
-                </div>
-            )}
-        </div>
+            <FilterSidebar 
+                isOpen={isFilterOpen}
+                onClose={() => setIsFilterOpen(false)}
+                onApplyFilters={handleApplyFilters}
+                canteens={canteens}
+            />
+        </>
     );
 };
 

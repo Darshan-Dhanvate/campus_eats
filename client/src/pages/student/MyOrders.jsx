@@ -8,20 +8,29 @@ const MyOrders = () => {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('All Orders');
 
+    const fetchOrders = async () => {
+        try {
+            const { data } = await api.get('/orders/my-orders');
+            setOrders(data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+        } catch (error) {
+            // We don't show a toast on polling errors to avoid spamming the user
+            console.error("Fetch Orders Error:", error);
+        } finally {
+            setLoading(false); // Only set loading to false on the initial fetch
+        }
+    };
+
     useEffect(() => {
-        const fetchOrders = async () => {
-            try {
-                setLoading(true);
-                const { data } = await api.get('/orders/my-orders');
-                setOrders(data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-            } catch (error) {
-                toast.error('Could not fetch your orders.');
-                console.error("Fetch Orders Error:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
+        // Fetch orders immediately when the component mounts
         fetchOrders();
+
+        // Set up an interval to poll for new order data every 10 seconds
+        const intervalId = setInterval(() => {
+            fetchOrders();
+        }, 10000); // 10000ms = 10 seconds
+
+        // Cleanup function to clear the interval when the component unmounts
+        return () => clearInterval(intervalId);
     }, []);
 
     const filterOrders = () => {

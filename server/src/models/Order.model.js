@@ -1,71 +1,63 @@
-import mongoose, { Schema } from 'mongoose';
+import mongoose from 'mongoose';
 
-const orderItemSchema = new Schema({
-  menuItemId: {
-    type: Schema.Types.ObjectId,
-    ref: 'MenuItem',
-    required: true,
-  },
-  quantity: {
-    type: Number,
-    required: true,
-    min: [1, 'Quantity cannot be less than 1.'],
-  },
-  // We store the price here to lock it in at the time of purchase
-  price: {
-    type: Number,
-    required: true,
-  },
-  name: { // Store name for easier display in order history
-    type: String,
-    required: true,
-  }
-}, { _id: false }); // Don't create a separate _id for subdocuments
+// This sub-schema defines the structure of each item within an order
+const orderItemSchema = new mongoose.Schema({
+    menuItem: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'MenuItem',
+        required: true,
+    },
+    quantity: {
+        type: Number,
+        required: true,
+        min: 1,
+    },
+    price: {
+        type: Number,
+        required: true,
+    },
+});
 
-const orderSchema = new Schema(
-  {
-    studentId: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-      index: true,
-    },
-    canteenId: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-      index: true,
-    },
-    items: [orderItemSchema],
-    totalAmount: {
-      type: Number,
-      required: true,
-    },
-    status: {
-      type: String,
-      required: true,
-      enum: ['Placed', 'Accepted', 'Preparing', 'Ready for Pickup', 'Completed', 'Cancelled'],
-      default: 'Placed',
-    },
-    paymentDetails: {
-        paymentId: { type: String },
-        status: { 
-            type: String,
-            enum: ['Pending', 'Completed', 'Failed'],
-            default: 'Pending'
+const orderSchema = new mongoose.Schema(
+    {
+        // FIX: Changed 'studentId' to 'user' to match the controller
+        user: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            required: true,
         },
-        method: { type: String } // e.g., 'Card', 'UPI'
+        // FIX: Changed 'canteenId' to 'canteen' to match the controller
+        canteen: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            required: true,
+        },
+        items: [orderItemSchema], // Use the defined sub-schema
+        totalAmount: {
+            type: Number,
+            required: true,
+        },
+        status: {
+            type: String,
+            required: true,
+            enum: ['Placed', 'Accepted', 'Preparing', 'Ready', 'Completed', 'Cancelled'],
+            default: 'Placed',
+        },
+        paymentMethod: {
+            type: String,
+            required: true,
+            default: 'Card',
+        },
+        paymentStatus: {
+            type: String,
+            required: true,
+            enum: ['Paid', 'Unpaid'],
+            default: 'Paid',
+        },
     },
-    // Adding a unique, human-readable order ID
-    orderId: {
-      type: String,
-      required: true,
-      unique: true,
+    {
+        timestamps: true,
     }
-  },
-  {
-    timestamps: true,
-  }
 );
 
 export const Order = mongoose.model('Order', orderSchema);

@@ -2,6 +2,9 @@
 
 @import "tailwindcss";
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+
 body {
   font-family: 'Inter', sans-serif;
   background-color: #F8FAFC; /* brand-light-gray */
@@ -9,3 +12,9 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* FIX: Add a more specific rule for tab buttons to ensure text is visible */
+.tab-button-inactive {
+  color: #64748B; /* brand-text-light */
+}
+

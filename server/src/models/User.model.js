@@ -28,19 +28,27 @@ const userSchema = new mongoose.Schema(
       enum: ['student', 'canteen'],
       default: 'student',
     },
+    // Student-specific details
+    studentDetails: {
+      studentId: { type: String },
+      phone: { type: String },
+      college: { type: String },
+      address: { type: String },
+    },
+    // Canteen-specific details
     canteenDetails: {
       canteenName: {
         type: String,
-        required: function () {
-          return this.role === 'canteen';
-        },
+        required: function () { return this.role === 'canteen'; },
       },
       canteenAddress: {
         type: String,
-        required: function () {
-          return this.role === 'canteen';
-        },
+        required: function () { return this.role === 'canteen'; },
       },
+      phone: { type: String },
+      operatingHours: { type: String },
+      cuisineTypes: { type: [String] },
+      description: { type: String },
       isOpen: {
         type: Boolean,
         default: true,
@@ -63,7 +71,7 @@ userSchema.pre('save', async function (next) {
 
 // Sign JWT and return
 userSchema.methods.getSignedJwtToken = function () {
-  const expiresIn = process.env.JWT_EXPIRE || '30d'; // <-- FIX: Added a default value
+  const expiresIn = process.env.JWT_EXPIRE || '30d';
   return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
     expiresIn: expiresIn,
   });

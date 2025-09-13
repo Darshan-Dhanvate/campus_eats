@@ -1,119 +1,101 @@
 import { Order } from '../models/Order.model.js';
 import { Review } from '../models/Review.model.js';
-import { MenuItem } from '../models/MenuItem.model.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
-// @desc    Create a new order
+// @desc    Create new order
 // @route   POST /api/v1/orders
-// @access  Private (Student only)
-const createOrder = asyncHandler(async (req, res) => {
-  const { items, canteenId, totalAmount, paymentStatus } = req.body;
-
-  if (!items || items.length === 0 || !canteenId || !totalAmount) {
-    res.status(400);
-    throw new Error('Missing required order information.');
-  }
-
-  // Ensure the user is a student
-  if (req.user.role !== 'student') {
-      res.status(403);
-      throw new Error('Only students can place orders.');
-  }
-
-  const order = new Order({
-    studentId: req.user._id,
-    canteenId,
-    items,
-    totalAmount,
-    paymentStatus: paymentStatus || 'Paid', // Default to 'Paid' assuming online payment
-  });
-
-  const createdOrder = await order.save();
-  res.status(201).json(createdOrder);
-});
-
-// @desc    Get logged-in student's orders
-// @route   GET /api/v1/orders/myorders
-// @access  Private (Student only)
-const getMyOrders = asyncHandler(async (req, res) => {
-  const orders = await Order.find({ studentId: req.user._id })
-    .populate('canteenId', 'canteenDetails.canteenName')
-    .populate('items.menuItem', 'name imageUrl')
-    .sort({ createdAt: -1 });
-    
-  res.status(200).json(orders);
-});
-
-// @desc    Get order by ID
-// @route   GET /api/v1/orders/:id
 // @access  Private
-const getOrderById = asyncHandler(async (req, res) => {
-  const order = await Order.findById(req.params.id)
-    .populate('studentId', 'name email')
-    .populate('canteenId', 'canteenDetails.canteenName canteenDetails.address')
-    .populate('items.menuItem', 'name price imageUrl');
+const createOrder = asyncHandler(async (req, res) => {
+    const { canteen, items, totalAmount, paymentMethod, paymentStatus } = req.body;
 
-  if (order) {
-    // Authorization check: User must be the student who placed the order or the canteen owner
-    if (
-      order.studentId._id.toString() !== req.user._id.toString() &&
-      order.canteenId._id.toString() !== req.user._id.toString()
-    ) {
-      res.status(403);
-      throw new Error('Not authorized to view this order.');
+    if (!items || items.length === 0) {
+        res.status(400);
+        throw new Error('No order items provided');
     }
-    res.status(200).json(order);
-  } else {
-    res.status(404);
-    throw new Error('Order not found.');
-  }
+
+    const order = new Order({
+        user: req.user._id,
+        canteen,
+        items,
+        totalAmount,
+        paymentMethod: paymentMethod || 'Card',
+        paymentStatus: paymentStatus || 'Paid',
+    });
+
+    const createdOrder = await order.save();
+    res.status(201).json(createdOrder);
 });
 
-// @desc    Create a new review for an order
-// @route   POST /api/v1/orders/:id/reviews
-// @access  Private (Student only)
+// @desc    Get logged in user's orders
+// @route   GET /api/v1/orders/my-orders
+// @access  Private
+const getMyOrders = asyncHandler(async (req, res) => {
+    const orders = await Order.find({ user: req.user._id })
+        .populate('canteen', 'canteenDetails')
+        .populate('items.menuItem', 'name');
+    res.status(200).json(orders);
+});
+
+// @desc    Update order status (for canteen owners)
+// @route   PUT /api/v1/orders/:id/status
+// @access  Private (Canteen)
+const updateOrderStatus = asyncHandler(async (req, res) => {
+    const order = await Order.findById(req.params.id);
+
+    if (order) {
+        // Security Check: Ensure the user updating the order is the owner of the canteen for that order.
+        if (order.canteen.toString() !== req.user._id.toString()) {
+            res.status(403); // 403 Forbidden is more appropriate than 401 Unauthorized
+            throw new Error('User not authorized to update this order');
+        }
+
+        order.status = req.body.status || order.status;
+        const updatedOrder = await order.save();
+        res.json(updatedOrder);
+    } else {
+        res.status(404);
+        throw new Error('Order not found');
+    }
+});
+
+// @desc    Add a review to an order
+// @route   POST /api/v1/orders/:orderId/review
+// @access  Private (Student)
 const addOrderReview = asyncHandler(async (req, res) => {
     const { rating, comment } = req.body;
-    const order = await Order.findById(req.params.id);
+    const { orderId } = req.params;
+
+    const order = await Order.findById(orderId);
 
     if (!order) {
         res.status(404);
-        throw new Error('Order not found.');
+        throw new Error('Order not found');
     }
-    
-    // Authorization check
-    if (order.studentId.toString() !== req.user._id.toString()) {
-        res.status(403);
-        throw new Error('Not authorized to review this order.');
+    if (order.user.toString() !== req.user._id.toString()) {
+        res.status(401);
+        throw new Error('Not authorized to review this order');
     }
-
-    // Check if the order is completed
     if (order.status !== 'Completed') {
         res.status(400);
-        throw new Error('You can only review completed orders.');
+        throw new Error('Order is not yet completed');
     }
-
-    // Check if the order has already been reviewed
-    if (order.isReviewed) {
+    const existingReview = await Review.findOne({ order: orderId });
+    if (existingReview) {
         res.status(400);
-        throw new Error('This order has already been reviewed.');
+        throw new Error('Order already reviewed');
     }
 
-    const review = new Review({
-        studentId: req.user._id,
-        canteenId: order.canteenId,
-        orderId: req.params.id,
+    const review = await Review.create({
+        user: req.user._id,
+        canteen: order.canteen,
+        order: orderId,
         rating,
         comment,
     });
-
-    await review.save();
-
-    order.isReviewed = true;
-    await order.save();
-
-    res.status(201).json({ message: 'Review added successfully.' });
+    
+    res.status(201).json(review);
 });
 
-export { createOrder, getMyOrders, getOrderById, addOrderReview };
+
+export { createOrder, getMyOrders, updateOrderStatus, addOrderReview };
 

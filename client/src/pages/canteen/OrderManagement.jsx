@@ -4,20 +4,22 @@ import toast from 'react-hot-toast';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import OrderColumn from '../../components/canteen/OrderColumn';
+import { useAuth } from '../../context/AuthContext';
 
 const OrderManagement = () => {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [isCanteenOpen, setIsCanteenOpen] = useState(true);
+    const { user, setUser } = useAuth();
+    
+    const [isCanteenOpen, setIsCanteenOpen] = useState(user?.canteenDetails?.isOpen || true);
 
     const fetchOrders = async () => {
         try {
-            setLoading(true);
-            const { data } = await api.get('/canteens/orders');
+            // Only fetch active orders for the Kanban board
+            const { data } = await api.get('/canteens/orders?status=active');
             setOrders(data.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)));
         } catch (error) {
             toast.error('Could not fetch orders.');
-            console.error("Fetch Canteen Orders Error:", error);
         } finally {
             setLoading(false);
         }
@@ -26,29 +28,54 @@ const OrderManagement = () => {
     useEffect(() => {
         fetchOrders();
     }, []);
+    
+    useEffect(() => {
+        if(user) {
+            setIsCanteenOpen(user.canteenDetails.isOpen);
+        }
+    }, [user]);
 
     const handleDropOrder = async (orderId, newStatus) => {
         const originalOrders = [...orders];
-        // Optimistically update the UI
         setOrders(prevOrders =>
             prevOrders.map(o => (o._id === orderId ? { ...o, status: newStatus } : o))
         );
 
         try {
-            // API call to update the order status
             await api.put(`/orders/${orderId}/status`, { status: newStatus });
             toast.success(`Order moved to ${newStatus}`);
         } catch (error) {
-            // Revert UI if API call fails
             setOrders(originalOrders);
             toast.error('Failed to update order status.');
-            console.error("Update Order Status Error:", error);
+        }
+    };
+
+    const handleCompleteOrder = async (orderId) => {
+        const originalOrders = [...orders];
+        // Optimistically remove the order from the UI
+        setOrders(prevOrders => prevOrders.filter(o => o._id !== orderId));
+
+        try {
+            await api.put(`/orders/${orderId}/status`, { status: 'Completed' });
+            toast.success('Order marked as completed!');
+        } catch (error) {
+            setOrders(originalOrders); // Revert UI on error
+            toast.error('Failed to complete order.');
         }
     };
     
-    const handleStatusToggle = () => {
-        setIsCanteenOpen(!isCanteenOpen);
-        toast.success(`Canteen is now ${!isCanteenOpen ? 'Open' : 'Closed'}`);
+    const handleStatusToggle = async () => {
+        const newStatus = !isCanteenOpen;
+        setIsCanteenOpen(newStatus);
+
+        try {
+            const { data } = await api.put('/users/profile', { isOpen: newStatus });
+            setUser(data);
+            toast.success(`Canteen is now ${newStatus ? 'Open' : 'Closed'}`);
+        } catch (error) {
+            setIsCanteenOpen(!newStatus);
+            toast.error('Failed to update canteen status.');
+        }
     };
 
     const columns = [
@@ -91,6 +118,7 @@ const OrderManagement = () => {
                             status={col.status}
                             orders={orders.filter(o => o.status === col.status)}
                             onDropOrder={handleDropOrder}
+                            onCompleteOrder={handleCompleteOrder} // Pass the new handler
                         />
                     ))}
                 </div>

@@ -12,18 +12,19 @@ import StudentLogin from '../pages/StudentLogin';
 import StudentSignup from '../pages/StudentSignup';
 import CanteenLogin from '../pages/CanteenLogin';
 import CanteenRegister from '../pages/CanteenRegister';
-
-// We will create these page components in the next steps
-// import BrowseCanteens from '../pages/student/BrowseCanteens';
-// import MyOrders from '../pages/student/MyOrders';
-// import StudentProfile from '../pages/student/StudentProfile';
-// import OrderManagement from '../pages/canteen/OrderManagement';
-// import MenuManagement from '../pages/canteen/MenuManagement';
-// import CanteenProfile from '../pages/canteen/CanteenProfile';
+import BrowseCanteens from '../pages/student/BrowseCanteens';
+import MyOrders from '../pages/student/MyOrders';
+import StudentProfile from '../pages/student/StudentProfile';
+import CanteenMenu from '../pages/student/CanteenMenu'; // Import the CanteenMenu page
+import OrderManagement from '../pages/canteen/OrderManagement';
+import MenuManagement from '../pages/canteen/MenuManagement';
+import Analytics from '../pages/canteen/Analytics';
+import CanteenProfile from '../pages/canteen/CanteenProfile';
+import CheckoutPage from '../pages/student/CheckoutPage';
 
 // A simple loading spinner component
 const FullPageSpinner = () => (
-    <div className="flex items-center justify-center h-screen">
+    <div className="flex items-center justify-center h-screen bg-brand-light-gray">
         <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-brand-green"></div>
     </div>
 );
@@ -48,18 +49,25 @@ const AppRouter = () => {
             </Route>
 
             {/* Protected Student Routes */}
-            {/* <Route path="/student" element={user && user.role === 'student' ? <MainLayout /> : <Navigate to="/login/student" />}>
+            <Route path="/student" element={user && user.role === 'student' ? <MainLayout /> : <Navigate to="/login/student" />}>
                 <Route path="browse" element={<BrowseCanteens />} />
                 <Route path="orders" element={<MyOrders />} />
                 <Route path="profile" element={<StudentProfile />} />
-            </Route> */}
+                {/* FIX: Added the route for a specific canteen menu */}
+                <Route path="canteen/:canteenId/menu" element={<CanteenMenu />} />
+            </Route>
 
             {/* Protected Canteen Routes */}
-            {/* <Route path="/canteen" element={user && user.role === 'canteen' ? <MainLayout /> : <Navigate to="/login/canteen" />}>
+            <Route path="/canteen" element={user && user.role === 'canteen' ? <MainLayout /> : <Navigate to="/login/canteen" />}>
                 <Route path="orders" element={<OrderManagement />} />
                 <Route path="menu" element={<MenuManagement />} />
+                <Route path="analytics" element={<Analytics />} />
                 <Route path="profile" element={<CanteenProfile />} />
-            </Route> */}
+            </Route>
+
+            {/* Checkout Route */}
+            <Route path="/checkout" element={user && user.role === 'student' ? <CheckoutPage /> : <Navigate to="/login/student" />} />
+
 
             {/* Fallback Route */}
             <Route path="*" element={<Navigate to="/" />} />
@@ -68,3 +76,4 @@ const AppRouter = () => {
 };
 
 export default AppRouter;
+
