@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
+import api from '../../api/axiosConfig';
+import toast from 'react-hot-toast';
 
 // Icons for the chat panel
 const SendIcon = () => (
@@ -15,12 +17,44 @@ const CloseIcon = () => (
 
 
 const AiChatPanel = ({ isOpen, onClose }) => {
-    // Dummy messages for layout purposes
-    const messages = [
-        { from: 'ai', text: "Hi! I'm your campus food assistant. What are you in the mood for today?" },
-        { from: 'user', text: "I want something spicy and vegetarian." },
-        { from: 'ai', text: "Great choice! How about a Paneer Tikka Masala from 'Campus Central Cafeteria' or a Spicy Veggie Pizza from 'Pizza Corner'?" },
-    ];
+    const [messages, setMessages] = useState([
+        { from: 'ai', text: "Hi! I'm your campus food assistant. What are you in the mood for today?" }
+    ]);
+    const [inputValue, setInputValue] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleSendMessage = async (e) => {
+        e.preventDefault();
+        const userQuery = inputValue.trim();
+        if (!userQuery) return;
+
+        // Add user's message to the chat
+        const newUserMessage = { from: 'user', text: userQuery };
+        const newMessages = [...messages, newUserMessage];
+        setMessages(newMessages);
+        setInputValue('');
+        setIsLoading(true);
+
+        try {
+            // Send the query and history to the backend
+            const { data } = await api.post('/ai/recommend', {
+                query: userQuery,
+                chatHistory: messages // Send the conversation history for context
+            });
+
+            // Add AI's response to the chat
+            const aiResponseMessage = { from: 'ai', text: data.recommendation };
+            setMessages([...newMessages, aiResponseMessage]);
+
+        } catch (error) {
+            toast.error("Sorry, I couldn't get a recommendation right now.");
+            // Optionally add an error message to the chat
+            setMessages([...newMessages, { from: 'ai', text: "I'm having a little trouble thinking. Please try again later." }]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
 
     return (
         <div 
@@ -44,24 +78,35 @@ const AiChatPanel = ({ isOpen, onClose }) => {
                             </div>
                         </div>
                     ))}
+                    {isLoading && (
+                        <div className="flex justify-start">
+                             <div className="max-w-xs lg:max-w-md px-4 py-2 rounded-2xl bg-gray-200 text-gray-800">
+                                Thinking...
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Input Area */}
-                <div className="p-4 border-t">
+                <form onSubmit={handleSendMessage} className="p-4 border-t">
                     <div className="flex items-center space-x-2">
                         <input
                             type="text"
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
                             placeholder="Ask for recommendations..."
                             className="w-full px-4 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-[#111184]"
+                            disabled={isLoading}
                         />
-                        <button className="bg-[#111184] text-white p-3 rounded-full hover:bg-opacity-90 flex-shrink-0">
+                        <button type="submit" disabled={isLoading} className="bg-[#111184] text-white p-3 rounded-full hover:bg-opacity-90 flex-shrink-0 disabled:bg-gray-400">
                             <SendIcon />
                         </button>
                     </div>
-                </div>
+                </form>
             </div>
         </div>
     );
 };
 
 export default AiChatPanel;
+
