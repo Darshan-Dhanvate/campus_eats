@@ -15,12 +15,13 @@ import CanteenRegister from '../pages/CanteenRegister';
 import BrowseCanteens from '../pages/student/BrowseCanteens';
 import MyOrders from '../pages/student/MyOrders';
 import StudentProfile from '../pages/student/StudentProfile';
-import CanteenMenu from '../pages/student/CanteenMenu'; // Import the CanteenMenu page
+import CanteenMenu from '../pages/student/CanteenMenu';
 import OrderManagement from '../pages/canteen/OrderManagement';
 import MenuManagement from '../pages/canteen/MenuManagement';
 import Analytics from '../pages/canteen/Analytics';
 import CanteenProfile from '../pages/canteen/CanteenProfile';
 import CheckoutPage from '../pages/student/CheckoutPage';
+import OrderHistory from '../pages/canteen/OrderHistory'; // Import the new page
 
 // A simple loading spinner component
 const FullPageSpinner = () => (
@@ -53,7 +54,6 @@ const AppRouter = () => {
                 <Route path="browse" element={<BrowseCanteens />} />
                 <Route path="orders" element={<MyOrders />} />
                 <Route path="profile" element={<StudentProfile />} />
-                {/* FIX: Added the route for a specific canteen menu */}
                 <Route path="canteen/:canteenId/menu" element={<CanteenMenu />} />
             </Route>
 
@@ -63,6 +63,8 @@ const AppRouter = () => {
                 <Route path="menu" element={<MenuManagement />} />
                 <Route path="analytics" element={<Analytics />} />
                 <Route path="profile" element={<CanteenProfile />} />
+                {/* FIX: Add the new route for order history */}
+                <Route path="history" element={<OrderHistory />} />
             </Route>
 
             {/* Checkout Route */}

@@ -8,7 +8,8 @@ import {
   deleteMenuItem,
   getMyCanteenMenu,
   getMyCanteenOrders,
-  getCanteenAnalytics, // Import the new analytics function
+  getCompletedOrderHistory, // Import the new function
+  getCanteenAnalytics,
 } from '../controllers/canteen.controller.js';
 import { protect, authorize } from '../middleware/auth.middleware.js';
 
@@ -32,7 +33,11 @@ router
   .route('/orders')
   .get(protect, authorize('canteen'), getMyCanteenOrders);
 
-// FIX: Add the new analytics route
+// FIX: Add the new route for completed order history
+router
+    .route('/orders/history')
+    .get(protect, authorize('canteen'), getCompletedOrderHistory);
+
 router
     .route('/analytics')
     .get(protect, authorize('canteen'), getCanteenAnalytics);
@@ -40,7 +45,7 @@ router
 
 // --- Public Routes ---
 router.route('/').get(getAllCanteens);
-router.route('/:id').get(getCanteenById); // Route to get a single canteen's details
+router.route('/:id').get(getCanteenById);
 router.route('/:id/menu').get(getCanteenMenu);
 
 

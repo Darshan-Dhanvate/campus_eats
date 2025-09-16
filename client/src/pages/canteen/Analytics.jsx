@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom'; // Import Link for navigation
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import api from '../../api/axiosConfig';
 import toast from 'react-hot-toast';
@@ -87,7 +88,13 @@ const Analytics = () => {
              {/* Popular Items & Insights */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="bg-white p-6 rounded-lg shadow-sm">
-                    <h2 className="text-xl font-semibold mb-4 text-brand-dark-blue">Popular Menu Items</h2>
+                     <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-semibold text-brand-dark-blue">Popular Menu Items</h2>
+                        {/* FIX: Add the "View All Orders" button */}
+                        <Link to="/canteen/history" className="text-sm font-medium text-brand-green hover:underline">
+                            View All Orders
+                        </Link>
+                    </div>
                      {popularItems.length > 0 ? (
                         <ul className="space-y-3">
                             {popularItems.map((item, index) => (

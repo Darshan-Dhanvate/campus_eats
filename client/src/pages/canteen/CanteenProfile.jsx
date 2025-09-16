@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axiosConfig';
 import toast from 'react-hot-toast';
 import EditProfileModal from '../../components/common/EditProfileModal';
 
-// Reusable component for displaying a piece of information
+// Reusable components
 const InfoField = ({ label, value }) => (
     <div>
         <label className="text-sm text-gray-500">{label}</label>
@@ -12,7 +12,6 @@ const InfoField = ({ label, value }) => (
     </div>
 );
 
-// Reusable component for the statistic cards
 const StatCard = ({ value, label }) => (
     <div className="text-center">
         <p className="text-3xl font-bold text-brand-green">{value}</p>
@@ -20,7 +19,6 @@ const StatCard = ({ value, label }) => (
     </div>
 );
 
-// Reusable component for the settings toggles
 const SettingToggle = ({ label, description, isEnabled, onToggle }) => (
     <div className="flex justify-between items-center py-3 border-b last:border-b-0">
         <div>
@@ -41,12 +39,28 @@ const SettingToggle = ({ label, description, isEnabled, onToggle }) => (
 const CanteenProfile = () => {
     const { user, setUser } = useAuth();
     const [isModalOpen, setIsModalOpen] = useState(false);
-    // State for toggles
+    const [stats, setStats] = useState(null);
+    const [loadingStats, setLoadingStats] = useState(true);
     const [settings, setSettings] = useState({
         showInDirectory: true,
         acceptOnlineOrders: true,
-        showRealTimeStatus: true,
     });
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            if (!user) return;
+            try {
+                setLoadingStats(true);
+                const { data } = await api.get('/canteens/analytics');
+                setStats(data.kpi);
+            } catch (error) {
+                toast.error("Could not load canteen stats.");
+            } finally {
+                setLoadingStats(false);
+            }
+        };
+        fetchStats();
+    }, [user]);
 
     const handleToggle = (settingName) => {
         setSettings(prev => ({ ...prev, [settingName]: !prev[settingName] }));
@@ -55,7 +69,7 @@ const CanteenProfile = () => {
     const handleSaveProfile = async (formData) => {
         try {
             const { data } = await api.put('/users/profile', formData);
-            setUser(data); // Update the user in the global context
+            setUser(data);
             toast.success('Profile updated successfully!');
             setIsModalOpen(false);
         } catch (error) {
@@ -72,7 +86,6 @@ const CanteenProfile = () => {
     return (
         <>
             <div>
-                {/* Header */}
                 <div className="flex justify-between items-center mb-8">
                     <div>
                         <h1 className="text-3xl font-bold text-brand-dark-blue">Canteen Profile</h1>
@@ -80,35 +93,37 @@ const CanteenProfile = () => {
                     </div>
                     <button 
                         onClick={() => setIsModalOpen(true)}
-                        className="bg-[#111184] text-white font-bold py-2 px-6 rounded-lg hover:bg-slate-700 transition duration-300"
+                        className="bg-[#111184] text-white font-bold py-2 px-6 rounded-lg hover:bg-opacity-90 transition duration-300"
                     >
                         Edit Profile
                     </button>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Left Column: Details */}
                     <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-sm">
                         <h2 className="text-xl font-semibold mb-6 text-brand-dark-blue border-b pb-4">Basic Information</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <InfoField label="Canteen Name" value={canteenDetails.canteenName} />
                             <InfoField label="Owner Name" value={name} />
                             <InfoField label="Email Address" value={email} />
-                            <InfoField label="Phone Number" value="+91 98765 43210" />
+                            <InfoField label="Phone Number" value={canteenDetails.phone || 'Not provided'} />
                             <InfoField label="Address" value={canteenDetails.canteenAddress} />
-                            <InfoField label="Operating Hours" value="9:00 AM - 8:00 PM" />
+                            <InfoField label="Operating Hours" value={canteenDetails.operatingHours || 'Not set'} />
                         </div>
                     </div>
 
-                    {/* Right Column: Stats and Settings */}
                     <div className="space-y-8">
                         <div className="bg-white p-6 rounded-lg shadow-sm">
                             <h2 className="text-xl font-semibold mb-4 text-brand-dark-blue text-center">Business Statistics</h2>
-                            <div className="flex justify-around">
-                                <StatCard value="4.6" label="Avg Rating" />
-                                <StatCard value="234" label="Total Reviews" />
-                                <StatCard value="1.2k+" label="Orders This Month" />
-                            </div>
+                            {loadingStats ? (
+                                <p className="text-center text-sm text-gray-500">Loading stats...</p>
+                            ) : (
+                                <div className="flex justify-around">
+                                    <StatCard value={stats?.avgRating ?? 'N/A'} label="Avg Rating" />
+                                    <StatCard value={stats?.totalOrders ?? 0} label="Total Orders" />
+                                    <StatCard value={stats?.activeCustomers ?? 0} label="Customers" />
+                                </div>
+                            )}
                         </div>
                         <div className="bg-white p-6 rounded-lg shadow-sm">
                             <h2 className="text-xl font-semibold mb-2 text-brand-dark-blue">Visibility Settings</h2>

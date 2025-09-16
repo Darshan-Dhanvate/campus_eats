@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Outlet, NavLink, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import AiButton from '../components/common/AiButton'; // Import the new components
+import AiChatPanel from '../components/common/AiChatPanel';
 
 const UserIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -10,6 +12,7 @@ const UserIcon = () => (
 
 const MainLayout = () => {
   const { user, logout } = useAuth();
+  const [isChatOpen, setIsChatOpen] = useState(false); // State to manage the chat panel
 
   const studentLinks = [
     { name: 'Browse Canteens', path: '/student/browse' },
@@ -76,8 +79,17 @@ const MainLayout = () => {
           <Outlet />
         </div>
       </main>
+
+      {/* Conditionally render AI chat components for students only */}
+      {user?.role === 'student' && (
+        <>
+          <AiButton onClick={() => setIsChatOpen(true)} />
+          <AiChatPanel isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+        </>
+      )}
     </div>
   );
 };
 
 export default MainLayout;
+

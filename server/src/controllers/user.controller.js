@@ -1,4 +1,6 @@
 import { User } from '../models/User.model.js';
+import { Order } from '../models/Order.model.js';
+import { Review } from '../models/Review.model.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 /**
@@ -8,7 +10,6 @@ import { asyncHandler } from '../utils/asyncHandler.js';
  */
 const getUserProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id).select('-password');
-
   if (user) {
     res.status(200).json(user);
   } else {
@@ -24,43 +25,60 @@ const getUserProfile = asyncHandler(async (req, res) => {
  */
 const updateUserProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
-
   if (!user) {
     res.status(404);
     throw new Error('User not found.');
   }
 
-  // Common fields for both students and canteens
   user.name = req.body.name || user.name;
-  
   if (req.body.password) {
-    user.password = req.body.password; // The pre-save hook will hash it
+    user.password = req.body.password;
   }
 
-  // Role-specific fields
   if (user.role === 'student') {
     user.studentDetails.phone = req.body.phone || user.studentDetails.phone;
-    // Add other student fields as needed
   } else if (user.role === 'canteen') {
     const { canteenName, canteenAddress, phone, isOpen } = req.body;
-    
     user.canteenDetails.canteenName = canteenName || user.canteenDetails.canteenName;
     user.canteenDetails.canteenAddress = canteenAddress || user.canteenDetails.canteenAddress;
     user.canteenDetails.phone = phone || user.canteenDetails.phone;
-
-    // Handle the open/closed toggle
     if (isOpen !== undefined) {
         user.canteenDetails.isOpen = isOpen;
     }
   }
 
   const updatedUser = await user.save();
-
-  // Return a comprehensive user object
   const userResponse = await User.findById(updatedUser._id).select('-password');
-
   res.status(200).json(userResponse);
 });
 
-export { getUserProfile, updateUserProfile };
+
+/**
+ * @description Get statistics for the logged-in student
+ * @route GET /api/v1/users/stats
+ * @access Private (Student)
+ */
+const getStudentStats = asyncHandler(async (req, res) => {
+    const studentId = req.user._id;
+
+    // Calculate total orders and spending
+    const orders = await Order.find({ user: studentId, status: 'Completed' });
+    const totalOrders = orders.length;
+    const totalSpent = orders.reduce((acc, order) => acc + order.totalAmount, 0);
+
+    // Calculate average rating given by the student
+    const reviews = await Review.find({ user: studentId });
+    const avgRating = reviews.length > 0
+        ? (reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length).toFixed(1)
+        : 0;
+    
+    res.status(200).json({
+        totalOrders,
+        totalSpent,
+        avgRating,
+    });
+});
+
+
+export { getUserProfile, updateUserProfile, getStudentStats };
 

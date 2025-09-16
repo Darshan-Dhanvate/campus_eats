@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axiosConfig';
 import toast from 'react-hot-toast';
 import EditProfileModal from '../../components/common/EditProfileModal';
 
-// Icon components for different sections
+// Icon and StatCard components remain the same
 const UserCircleIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -21,18 +21,31 @@ const StatCard = ({ title, value }) => (
 const StudentProfile = () => {
     const { user, setUser } = useAuth();
     const [isModalOpen, setIsModalOpen] = useState(false);
-    
-    // Dummy data for stats until API provides it
-    const stats = {
-        totalOrders: 24,
-        totalSpent: '₹2,460',
-        avgRating: 4.8,
-    };
+    const [stats, setStats] = useState(null);
+    const [loadingStats, setLoadingStats] = useState(true);
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                setLoadingStats(true);
+                const { data } = await api.get('/users/stats');
+                setStats(data);
+            } catch (error) {
+                toast.error("Could not load your stats.");
+            } finally {
+                setLoadingStats(false);
+            }
+        };
+
+        if (user) {
+            fetchStats();
+        }
+    }, [user]);
 
     const handleSaveProfile = async (formData) => {
         try {
             const { data } = await api.put('/users/profile', formData);
-            setUser(data); // Update the user in the global context
+            setUser(data);
             toast.success('Profile updated successfully!');
             setIsModalOpen(false);
         } catch (error) {
@@ -68,14 +81,23 @@ const StudentProfile = () => {
 
                 {/* Stats Section */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <StatCard title="Total Orders" value={stats.totalOrders} />
-                    <StatCard title="Total Spent" value={stats.totalSpent} />
-                    <StatCard title="Avg Rating Given" value={stats.avgRating} />
+                    {loadingStats ? (
+                        <>
+                            <div className="bg-white p-4 rounded-lg shadow-sm animate-pulse h-20"></div>
+                            <div className="bg-white p-4 rounded-lg shadow-sm animate-pulse h-20"></div>
+                            <div className="bg-white p-4 rounded-lg shadow-sm animate-pulse h-20"></div>
+                        </>
+                    ) : (
+                        <>
+                            <StatCard title="Total Orders" value={stats?.totalOrders ?? 0} />
+                            <StatCard title="Total Spent" value={`₹${stats?.totalSpent.toLocaleString('en-IN') ?? 0}`} />
+                            <StatCard title="Avg Rating Given" value={stats?.avgRating ?? 0} />
+                        </>
+                    )}
                 </div>
                 
                 {/* Profile Details Section */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Personal Information */}
                     <div className="bg-white p-6 rounded-lg shadow-sm">
                         <h2 className="text-xl font-semibold mb-4 text-brand-dark-blue">Personal Information</h2>
                         <div className="space-y-4">
@@ -89,13 +111,15 @@ const StudentProfile = () => {
                             </div>
                             <div>
                                 <label className="text-sm text-gray-500">Phone Number</label>
-                                <p className="font-medium">{user.phone || 'Not provided'}</p>
+                                <p className="font-medium">{user.studentDetails?.phone || 'Not provided'}</p>
                             </div>
                         </div>
                     </div>
 
-                    {/* Account Settings */}
                     <div className="bg-white p-6 rounded-lg shadow-sm">
+                        <h2 className="text-xl font-semibold mb-4 text-brand-dark-blue">Account Settings</h2>
+                        {/* ... Account settings content ... */}
+                        <div className="bg-white p-6 rounded-lg shadow-sm">
                         <h2 className="text-xl font-semibold mb-4 text-brand-dark-blue">Account Settings</h2>
                         <div className="space-y-4">
                         <div className="flex justify-between items-center">
@@ -113,6 +137,7 @@ const StudentProfile = () => {
                             <button className="text-sm text-brand-green font-semibold">Manage</button>
                         </div>
                         </div>
+                    </div>
                     </div>
                 </div>
             </div>
