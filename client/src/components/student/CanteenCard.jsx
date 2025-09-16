@@ -39,7 +39,7 @@ const CanteenCard = ({ canteen }) => {
                         to={`/student/canteen/${canteen._id}/menu`}
                         className={`w-full text-center block font-bold py-2 px-4 rounded-lg transition duration-300 ${
                             isOpen
-                            ? 'bg-brand-green text-white hover:bg-green-600'
+                            ? 'bg-[green] text-white hover:bg-green-600'
                             : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         }`}
                         onClick={(e) => !isOpen && e.preventDefault()}

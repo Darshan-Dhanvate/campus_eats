@@ -54,7 +54,7 @@ const MyOrders = () => {
             onClick={() => setActiveTab(name)}
             className={`px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200 ${
                 activeTab === name
-                    ? 'bg-brand-green text-white shadow-sm'
+                    ? 'bg-[green] text-white shadow-sm'
                     : 'text-brand-text-light hover:bg-gray-200'
             }`}
         >

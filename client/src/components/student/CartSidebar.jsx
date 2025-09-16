@@ -67,7 +67,7 @@ const CartSidebar = () => {
                         <span>₹{cartTotal}</span>
                     </div>
                      <Link to="/checkout">
-                         <button className="w-full bg-brand-green text-white font-bold py-3 rounded-lg mt-4 hover:bg-green-600 transition duration-300">
+                         <button className="w-full bg-[green] text-white font-bold py-3 rounded-lg mt-4 hover:bg-green-600 transition duration-300">
                              Go to Checkout
                          </button>
                     </Link>

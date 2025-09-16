@@ -80,7 +80,7 @@ const CanteenProfile = () => {
                     </div>
                     <button 
                         onClick={() => setIsModalOpen(true)}
-                        className="bg-brand-dark-blue text-white font-bold py-2 px-6 rounded-lg hover:bg-slate-700 transition duration-300"
+                        className="bg-[#111184] text-white font-bold py-2 px-6 rounded-lg hover:bg-slate-700 transition duration-300"
                     >
                         Edit Profile
                     </button>

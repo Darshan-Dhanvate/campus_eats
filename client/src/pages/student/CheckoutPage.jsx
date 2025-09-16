@@ -53,7 +53,7 @@ const CheckoutPage = () => {
         return (
             <div className="text-center py-20">
                 <h1 className="text-2xl font-bold mb-4">Your Cart is Empty</h1>
-                <Link to="/student/browse" className="bg-brand-green text-white font-bold py-3 px-6 rounded-lg hover:bg-green-600">
+                <Link to="/student/browse" className="bg-[green] text-white font-bold py-3 px-6 rounded-lg hover:bg-green-600">
                     Browse Canteens
                 </Link>
             </div>
@@ -91,7 +91,7 @@ const CheckoutPage = () => {
                          <button
                             onClick={handlePlaceOrder}
                             disabled={loading}
-                            className="w-full mt-6 bg-brand-green text-white font-bold py-3 rounded-lg hover:bg-green-600 transition duration-300 disabled:bg-green-300"
+                            className="w-full mt-6 bg-[green] text-white font-bold py-3 rounded-lg hover:bg-green-600 transition duration-300 disabled:bg-green-300"
                         >
                             {loading ? 'Placing Order...' : `Place Order (₹${cartTotal})`}
                         </button>

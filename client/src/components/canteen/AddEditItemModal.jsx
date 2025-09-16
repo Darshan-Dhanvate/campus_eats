@@ -79,7 +79,7 @@ const AddEditItemModal = ({ isOpen, onClose, onSave, itemToEdit }) => {
                         <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">
                             Cancel
                         </button>
-                        <button type="submit" disabled={loading} className="px-4 py-2 bg-brand-green text-white rounded-md hover:bg-green-600 disabled:bg-green-300">
+                        <button type="submit" disabled={loading} className="px-4 py-2 bg-[green] text-white rounded-md hover:bg-green-600 disabled:bg-green-300">
                             {loading ? 'Saving...' : 'Save Item'}
                         </button>
                     </div>

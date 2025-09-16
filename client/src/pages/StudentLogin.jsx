@@ -77,7 +77,7 @@ const StudentLogin = () => {
                 <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-brand-green text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 transition duration-300 disabled:bg-green-300"
+                    className="w-full bg-[green] text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 transition duration-300 disabled:bg-green-300"
                 >
                     {loading ? 'Signing In...' : 'Sign In'}
                 </button>

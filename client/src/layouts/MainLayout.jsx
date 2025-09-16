@@ -46,7 +46,7 @@ const MainLayout = () => {
                     className={({ isActive }) =>
                       `px-3 py-2 rounded-md text-sm font-medium ${
                         isActive
-                          ? 'bg-brand-green text-white'
+                          ? 'bg-[green] text-white'
                           : 'text-brand-text-light hover:bg-gray-100'
                       }`
                     }

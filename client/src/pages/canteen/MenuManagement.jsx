@@ -96,7 +96,7 @@ const MenuManagement = () => {
             onClick={() => setActiveTab(name)}
             className={`px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200 whitespace-nowrap ${
                 activeTab === name
-                    ? 'bg-brand-dark-blue text-white shadow-sm'
+                    ? 'bg-[#111184] text-white shadow-sm'
                     : 'text-brand-text-light bg-white hover:bg-gray-100'
             }`}
         >
@@ -115,7 +115,7 @@ const MenuManagement = () => {
                 </div>
                 <button 
                     onClick={() => handleOpenModal()}
-                    className="flex items-center bg-brand-green text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition duration-300"
+                    className="flex items-center bg-[green] text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition duration-300"
                 >
                     <PlusIcon />
                     Add Menu Item

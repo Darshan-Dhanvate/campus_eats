@@ -31,7 +31,7 @@ const LandingPage = () => {
                 </div>
                 <h2 className="text-2xl font-semibold text-brand-dark-blue mb-2">I'm a Student</h2>
                 <p className="text-brand-text-light mb-6">Browse canteens, place orders, and enjoy your meals.</p>
-                <Link to="/login/student" className="w-full bg-brand-green text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 transition duration-300">
+                <Link to="/login/student" className="w-full bg-[green] text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 transition duration-300">
                     Continue as Student
                 </Link>
             </div>
@@ -43,7 +43,7 @@ const LandingPage = () => {
                 </div>
                 <h2 className="text-2xl font-semibold text-brand-dark-blue mb-2">I'm a Canteen Owner</h2>
                 <p className="text-brand-text-light mb-6">Manage your menu, process orders, and grow your business.</p>
-                <Link to="/login/canteen" className="w-full bg-brand-dark-blue text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700 transition duration-300">
+                <Link to="/login/canteen" className="w-full bg-[#111184] text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700 transition duration-300">
                     Continue as Canteen Owner
                 </Link>
             </div>

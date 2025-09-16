@@ -18,7 +18,7 @@ const MenuItemCard = ({ item, canteen }) => {
                     <button 
                         onClick={() => addToCart(item, canteen)}
                         disabled={!item.isAvailable}
-                        className="bg-brand-green text-white font-bold py-2 px-5 rounded-lg text-sm hover:bg-green-600 transition duration-300 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                        className="bg-[green] text-white font-bold py-2 px-5 rounded-lg text-sm hover:bg-green-600 transition duration-300 disabled:bg-gray-300 disabled:cursor-not-allowed"
                     >
                         {item.isAvailable ? 'Add' : 'Unavailable'}
                     </button>

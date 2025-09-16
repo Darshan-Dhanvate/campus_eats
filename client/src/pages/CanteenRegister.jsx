@@ -129,7 +129,7 @@ const CanteenRegister = () => {
                 <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-brand-dark-blue text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700 transition duration-300 disabled:bg-slate-400"
+                    className="w-full bg-[#111184] text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700 transition duration-300 disabled:bg-slate-400"
                 >
                     {loading ? 'Registering...' : 'Register Canteen'}
                 </button>
