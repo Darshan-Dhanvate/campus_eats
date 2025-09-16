@@ -46,15 +46,13 @@ const MenuManagement = () => {
     const handleSaveItem = async (itemData) => {
         try {
             if (editingItem) {
-                // Update existing item
                 await api.put(`/canteens/menu/${editingItem._id}`, itemData);
                 toast.success('Item updated successfully!');
             } else {
-                // Create new item
                 await api.post('/canteens/menu', itemData);
                 toast.success('Item added successfully!');
             }
-            fetchMenuItems(); // Refresh the list
+            fetchMenuItems();
             handleCloseModal();
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to save item.');
@@ -107,7 +105,7 @@ const MenuManagement = () => {
     if (loading) return <p className="text-center mt-10">Loading menu...</p>;
 
     return (
-        <div>
+        <div className="max-w-7xl mx-auto">
             <div className="flex justify-between items-center mb-6">
                 <div>
                     <h1 className="text-3xl font-bold text-brand-dark-blue">Menu Management</h1>
@@ -115,7 +113,7 @@ const MenuManagement = () => {
                 </div>
                 <button 
                     onClick={() => handleOpenModal()}
-                    className="flex items-center bg-[green] text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition duration-300"
+                    className="flex items-center bg-brand-green text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition duration-300"
                 >
                     <PlusIcon />
                     Add Menu Item

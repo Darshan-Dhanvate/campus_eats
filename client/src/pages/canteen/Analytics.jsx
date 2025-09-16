@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom'; // Import Link for navigation
+import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import api from '../../api/axiosConfig';
 import toast from 'react-hot-toast';
 
 // Reusable component for the KPI cards
-const KpiCard = ({ title, value, change }) => (
+const KpiCard = ({ title, value, subValue }) => (
     <div className="bg-white p-4 rounded-lg shadow-sm">
         <p className="text-sm text-gray-500">{title}</p>
         <p className="text-3xl font-bold text-brand-dark-blue">{value}</p>
-        {change && <p className={`text-xs ${change.startsWith('+') ? 'text-green-500' : 'text-red-500'}`}>{change}</p>}
+        {subValue && <p className="text-xs text-gray-400">{subValue}</p>}
     </div>
 );
 
@@ -26,7 +26,6 @@ const Analytics = () => {
                 setAnalyticsData(data);
             } catch (error) {
                 toast.error("Could not fetch analytics data.");
-                console.error("Fetch Analytics Error:", error);
             } finally {
                 setLoading(false);
             }
@@ -45,7 +44,6 @@ const Analytics = () => {
 
     const { kpi, dailyData, popularItems } = analyticsData;
 
-    // Format daily data for the chart
     const formattedDailyData = dailyData.map(d => ({
         name: new Date(d._id).toLocaleDateString('en-US', { weekday: 'short' }),
         sales: d.totalSales,
@@ -61,10 +59,16 @@ const Analytics = () => {
             </div>
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
                 <KpiCard title="Total Revenue" value={`₹${kpi.totalRevenue.toLocaleString('en-IN')}`} />
                 <KpiCard title="Total Orders" value={kpi.totalOrders} />
                 <KpiCard title="Average Rating" value={kpi.avgRating} />
+                {/* FIX: Add the new Prep Time KPI Card */}
+                <KpiCard 
+                    title="Avg Prep Time" 
+                    value={`${kpi.avgActualPrepTime} min`}
+                    subValue={`(Est: ${kpi.avgEstimatedPrepTime} min)`}
+                />
                 <KpiCard title="Active Customers" value={kpi.activeCustomers} />
             </div>
 
@@ -75,9 +79,9 @@ const Analytics = () => {
                     <BarChart data={formattedDailyData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                         <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                        <YAxis yAxisId="left" orientation="left" stroke="#22C55E" tick={{ fontSize: 12 }} label={{ value: 'Sales (₹)', angle: -90, position: 'insideLeft' }} />
-                        <YAxis yAxisId="right" orientation="right" stroke="#3B82F6" tick={{ fontSize: 12 }} label={{ value: 'Orders', angle: -90, position: 'insideRight' }} />
-                        <Tooltip formatter={(value, name) => name === 'Sales (₹)' ? `₹${value}`: value}/>
+                        <YAxis yAxisId="left" orientation="left" stroke="#22C55E" tick={{ fontSize: 12 }} />
+                        <YAxis yAxisId="right" orientation="right" stroke="#3B82F6" tick={{ fontSize: 12 }} />
+                        <Tooltip formatter={(value, name) => name === 'sales' ? `₹${value}`: value}/>
                         <Legend wrapperStyle={{fontSize: "14px"}} />
                         <Bar yAxisId="left" dataKey="sales" fill="#22C55E" name="Sales (₹)" radius={[4, 4, 0, 0]} />
                         <Bar yAxisId="right" dataKey="orders" fill="#3B82F6" name="Orders" radius={[4, 4, 0, 0]}/>
@@ -85,12 +89,10 @@ const Analytics = () => {
                 </ResponsiveContainer>
             </div>
             
-             {/* Popular Items & Insights */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="bg-white p-6 rounded-lg shadow-sm">
                      <div className="flex justify-between items-center mb-4">
                         <h2 className="text-xl font-semibold text-brand-dark-blue">Popular Menu Items</h2>
-                        {/* FIX: Add the "View All Orders" button */}
                         <Link to="/canteen/history" className="text-sm font-medium text-brand-green hover:underline">
                             View All Orders
                         </Link>

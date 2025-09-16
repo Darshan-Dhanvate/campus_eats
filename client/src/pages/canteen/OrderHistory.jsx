@@ -58,7 +58,7 @@ const OrderHistory = () => {
     }
 
     return (
-        <div>
+        <div className="max-w-7xl mx-auto">
             {/* Header */}
             <div className="mb-6">
                 <Link to="/canteen/analytics" className="text-sm text-brand-green hover:underline mb-2 inline-block">
@@ -91,27 +91,42 @@ const OrderHistory = () => {
                     <table className="w-full text-sm text-left text-gray-500">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                             <tr>
-                                <th scope="col" className="px-6 py-3">Order Date</th>
-                                <th scope="col" className="px-6 py-3">Student Name</th>
-                                <th scope="col" className="px-6 py-3">Amount</th>
-                                <th scope="col" className="px-6 py-3">Rating</th>
-                                <th scope="col" className="px-6 py-3">Comment</th>
+                                <th scope="col" className="px-6 py-3">Order Details</th>
+                                <th scope="col" className="px-6 py-3">Products Ordered</th>
+                                <th scope="col" className="px-6 py-3">Prep Time (Est vs Actual)</th>
+                                <th scope="col" className="px-6 py-3">Review</th>
                             </tr>
                         </thead>
                         <tbody>
                             {filteredHistory.length > 0 ? filteredHistory.map(order => (
                                 <tr key={order._id} className="bg-white border-b hover:bg-gray-50">
-                                    <td className="px-6 py-4">{new Date(order.createdAt).toLocaleDateString()}</td>
-                                    <td className="px-6 py-4 font-medium text-gray-900">{order.studentName}</td>
-                                    <td className="px-6 py-4">₹{order.totalAmount}</td>
                                     <td className="px-6 py-4">
-                                        {order.rating ? <StarRating rating={order.rating} /> : <span className="text-gray-400">N/A</span>}
+                                        <p className="font-medium text-gray-900">{order.studentName}</p>
+                                        <p className="text-xs">{new Date(order.createdAt).toLocaleString()}</p>
+                                        <p className="font-semibold text-brand-green">₹{order.totalAmount}</p>
                                     </td>
-                                    <td className="px-6 py-4 text-xs max-w-xs truncate">{order.comment || <span className="text-gray-400">No comment</span>}</td>
+                                    <td className="px-6 py-4">
+                                        <ul className="list-disc list-inside text-xs">
+                                            {order.products.map((product, i) => <li key={i}>{product}</li>)}
+                                        </ul>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <p>{order.estimatedPrepTime} min / {order.actualPrepTime ? `${order.actualPrepTime} min` : 'N/A'}</p>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        {order.rating ? (
+                                            <>
+                                                <StarRating rating={order.rating} />
+                                                <p className="text-xs max-w-xs truncate mt-1">{order.comment || "No comment"}</p>
+                                            </>
+                                        ) : (
+                                            <span className="text-gray-400">Not Rated</span>
+                                        )}
+                                    </td>
                                 </tr>
                             )) : (
                                 <tr>
-                                    <td colSpan="5" className="text-center py-10">No completed orders found.</td>
+                                    <td colSpan="4" className="text-center py-10">No completed orders found for the selected criteria.</td>
                                 </tr>
                             )}
                         </tbody>
@@ -123,3 +138,4 @@ const OrderHistory = () => {
 };
 
 export default OrderHistory;
+

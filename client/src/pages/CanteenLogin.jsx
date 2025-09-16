@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -14,6 +14,7 @@ const CanteenLogin = () => {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const { login } = useAuth();
+    const navigate = useNavigate(); // Get the navigate function from the router
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -22,8 +23,11 @@ const CanteenLogin = () => {
         }
         setLoading(true);
         try {
-            await login(email, password);
-            // The router will automatically navigate on successful login
+            const loggedInUser = await login(email, password);
+            // FIX: Only navigate AFTER the login is confirmed to be successful
+            if (loggedInUser) {
+                navigate('/canteen/orders'); // Manually navigate to the dashboard
+            }
         } catch (error) {
             // Error toast is handled in AuthContext
         } finally {
@@ -52,7 +56,7 @@ const CanteenLogin = () => {
                         id="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="w-full px-4 py-2 border border-brand-medium-gray rounded-lg focus:ring-brand-dark-blue focus:border-brand-dark-blue"
+                        className="w-full px-4 py-2 border border-brand-medium-gray rounded-lg focus:ring-[#111184] focus:border-[#111184]"
                         placeholder="Enter your business email"
                         required
                     />
@@ -66,7 +70,7 @@ const CanteenLogin = () => {
                         id="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full px-4 py-2 border border-brand-medium-gray rounded-lg focus:ring-brand-dark-blue focus:border-brand-dark-blue"
+                        className="w-full px-4 py-2 border border-brand-medium-gray rounded-lg focus:ring-[#111184] focus:border-[#111184]"
                         placeholder="Enter your password"
                         required
                     />
@@ -74,7 +78,7 @@ const CanteenLogin = () => {
                 <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-[#111184] text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700 transition duration-300 disabled:bg-slate-400"
+                    className="w-full bg-[#111184] text-white font-bold py-3 px-4 rounded-lg hover:bg-opacity-90 transition duration-300 disabled:bg-slate-400"
                 >
                     {loading ? 'Signing In...' : 'Sign In'}
                 </button>
@@ -90,3 +94,4 @@ const CanteenLogin = () => {
 };
 
 export default CanteenLogin;
+

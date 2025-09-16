@@ -45,39 +45,37 @@ const BrowseCanteens = () => {
     const filteredCanteens = useMemo(() => {
         return canteens.filter(canteen => {
             const nameMatch = canteen.canteenDetails.canteenName.toLowerCase().includes(searchTerm.toLowerCase());
-            
             const cuisineMatch = activeFilters.cuisines.length === 0 || 
                 activeFilters.cuisines.some(cuisine => 
                     canteen.canteenDetails.cuisineTypes?.includes(cuisine)
                 );
-
             return nameMatch && cuisineMatch;
         });
     }, [canteens, searchTerm, activeFilters]);
 
     const SkeletonCard = () => (
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden animate-pulse">
-            <div className="w-full h-44 bg-gray-300"></div>
+        <div className="bg-white rounded-lg shadow-md overflow-hidden animate-pulse">
+            <div className="w-full h-40 bg-gray-200"></div>
             <div className="p-4">
-                <div className="h-6 bg-gray-300 rounded w-3/4 mb-4"></div>
-                <div className="h-4 bg-gray-300 rounded w-full mb-2"></div>
-                <div className="h-10 bg-gray-300 rounded w-full mt-4"></div>
+                <div className="h-5 bg-gray-200 rounded w-3/4 mb-4"></div>
+                <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
+                <div className="h-10 bg-gray-200 rounded w-full mt-4"></div>
             </div>
         </div>
     );
 
 
     return (
-        // FIX: Added a max-width container to make the layout less wide on large screens
-        <div className="max-w-7xl mx-auto">
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold text-brand-dark-blue">Browse Canteens</h1>
+        // FIX: Main container for the new centered layout
+        <div className="max-w-6xl mx-auto">
+            <div className="text-center mb-10">
+                <h1 className="text-4xl font-bold text-brand-dark-blue">Browse Canteens</h1>
             </div>
 
             {/* Search and Filter Bar */}
-            <div className="flex flex-col sm:flex-row justify-between items-center mb-6 bg-white p-4 rounded-lg shadow-sm">
-                <div className="relative w-full sm:w-auto sm:flex-grow mr-0 sm:mr-4">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <div className="flex justify-center items-center mb-8 gap-4">
+                <div className="relative w-full max-w-lg">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                         <SearchIcon />
                     </div>
                     <input
@@ -85,12 +83,12 @@ const BrowseCanteens = () => {
                         placeholder="Search canteens..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-brand-green focus:border-brand-green"
+                        className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-[#111184]"
                     />
                 </div>
                 <button 
                     onClick={() => setIsFilterOpen(true)}
-                    className="w-full sm:w-auto mt-4 sm:mt-0 flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                    className="flex items-center justify-center px-6 py-3 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white shadow-sm hover:bg-gray-50"
                 >
                     <FilterIcon />
                     Filters
@@ -99,11 +97,11 @@ const BrowseCanteens = () => {
             
             {/* Canteen Grid */}
             {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[...Array(3)].map((_, i) => <SkeletonCard key={i} />)}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {[...Array(4)].map((_, i) => <SkeletonCard key={i} />)}
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {filteredCanteens.length > 0 ? (
                         filteredCanteens.map(canteen => (
                             <CanteenCard key={canteen._id} canteen={canteen} />

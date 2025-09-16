@@ -13,23 +13,15 @@ const MyOrders = () => {
             const { data } = await api.get('/orders/my-orders');
             setOrders(data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
         } catch (error) {
-            // We don't show a toast on polling errors to avoid spamming the user
             console.error("Fetch Orders Error:", error);
         } finally {
-            setLoading(false); // Only set loading to false on the initial fetch
+            setLoading(false);
         }
     };
 
     useEffect(() => {
-        // Fetch orders immediately when the component mounts
         fetchOrders();
-
-        // Set up an interval to poll for new order data every 10 seconds
-        const intervalId = setInterval(() => {
-            fetchOrders();
-        }, 10000); // 10000ms = 10 seconds
-
-        // Cleanup function to clear the interval when the component unmounts
+        const intervalId = setInterval(fetchOrders, 10000);
         return () => clearInterval(intervalId);
     }, []);
 
@@ -49,12 +41,13 @@ const MyOrders = () => {
 
     const filteredOrders = filterOrders();
 
+    // Using the original, internal TabButton definition
     const TabButton = ({ name }) => (
         <button
             onClick={() => setActiveTab(name)}
             className={`px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200 ${
                 activeTab === name
-                    ? 'bg-[green] text-white shadow-sm'
+                    ? 'bg-green-600 text-white shadow-sm'
                     : 'text-brand-text-light hover:bg-gray-200'
             }`}
         >
@@ -81,7 +74,8 @@ const MyOrders = () => {
     );
 
     return (
-        <div>
+        // FIX: Added the max-width container as requested
+        <div className="max-w-4xl mx-auto">
             <div className="mb-8">
                 <h1 className="text-3xl font-bold text-brand-dark-blue">My Orders</h1>
             </div>
