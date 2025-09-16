@@ -1,6 +1,18 @@
 import mongoose from 'mongoose';
 
-// This sub-schema defines the structure of each item within an order
+// A new sub-schema to track the history of each status change
+const statusHistorySchema = new mongoose.Schema({
+    status: {
+        type: String,
+        required: true,
+        enum: ['Placed', 'Accepted', 'Preparing', 'Ready', 'Completed', 'Cancelled'],
+    },
+    timestamp: {
+        type: Date,
+        default: Date.now,
+    },
+}, { _id: false }); // We don't need separate IDs for history entries
+
 const orderItemSchema = new mongoose.Schema({
     menuItem: {
         type: mongoose.Schema.Types.ObjectId,
@@ -20,19 +32,17 @@ const orderItemSchema = new mongoose.Schema({
 
 const orderSchema = new mongoose.Schema(
     {
-        // FIX: Changed 'studentId' to 'user' to match the controller
         user: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',
             required: true,
         },
-        // FIX: Changed 'canteenId' to 'canteen' to match the controller
         canteen: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',
             required: true,
         },
-        items: [orderItemSchema], // Use the defined sub-schema
+        items: [orderItemSchema],
         totalAmount: {
             type: Number,
             required: true,
@@ -43,6 +53,8 @@ const orderSchema = new mongoose.Schema(
             enum: ['Placed', 'Accepted', 'Preparing', 'Ready', 'Completed', 'Cancelled'],
             default: 'Placed',
         },
+        // FIX: Add the new field to store the history of status changes
+        statusHistory: [statusHistorySchema],
         paymentMethod: {
             type: String,
             required: true,
@@ -59,6 +71,15 @@ const orderSchema = new mongoose.Schema(
         timestamps: true,
     }
 );
+
+// Mongoose middleware to automatically add the initial status to the history
+orderSchema.pre('save', function(next) {
+    // If the document is new, add the 'Placed' status to its history
+    if (this.isNew) {
+        this.statusHistory.push({ status: 'Placed', timestamp: new Date() });
+    }
+    next();
+});
 
 export const Order = mongoose.model('Order', orderSchema);
 

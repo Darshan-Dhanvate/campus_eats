@@ -12,28 +12,18 @@ const createOrder = asyncHandler(async (req, res) => {
         res.status(400);
         throw new Error('No order items provided');
     }
-    if (!canteen || !totalAmount) {
-        res.status(400);
-        throw new Error('Missing required order information');
-    }
 
-    try {
-        const order = new Order({
-            user: req.user._id,
-            canteen,
-            items,
-            totalAmount,
-            paymentMethod: paymentMethod || 'Card',
-            paymentStatus: paymentStatus || 'Paid',
-        });
+    const order = new Order({
+        user: req.user._id,
+        canteen,
+        items,
+        totalAmount,
+        paymentMethod: paymentMethod || 'Card',
+        paymentStatus: paymentStatus || 'Paid',
+    });
 
-        const createdOrder = await order.save();
-        res.status(201).json(createdOrder);
-    } catch (error) {
-        // Log the error for the developer but send a clean message to the user
-        console.error("!!! ERROR SAVING ORDER !!!", error);
-        res.status(500).json({ message: "Failed to save the order to the database." });
-    }
+    const createdOrder = await order.save();
+    res.status(201).json(createdOrder);
 });
 
 // @desc    Get logged in user's orders
@@ -46,18 +36,26 @@ const getMyOrders = asyncHandler(async (req, res) => {
     res.status(200).json(orders);
 });
 
-// @desc    Update order status
+// @desc    Update order status (for canteen owners)
 // @route   PUT /api/v1/orders/:id/status
-// @access  Private (Canteen role required)
+// @access  Private (Canteen)
 const updateOrderStatus = asyncHandler(async (req, res) => {
     const order = await Order.findById(req.params.id);
 
     if (order) {
+        // Security Check
         if (order.canteen.toString() !== req.user._id.toString()) {
             res.status(403);
             throw new Error('User not authorized to update this order');
         }
-        order.status = req.body.status || order.status;
+
+        const newStatus = req.body.status;
+        if (newStatus) {
+            order.status = newStatus;
+            // FIX: Add the new status change to the history array
+            order.statusHistory.push({ status: newStatus, timestamp: new Date() });
+        }
+        
         const updatedOrder = await order.save();
         res.json(updatedOrder);
     } else {
@@ -68,7 +66,7 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
 
 // @desc    Add a review to an order
 // @route   POST /api/v1/orders/:orderId/review
-// @access  Private
+// @access  Private (Student)
 const addOrderReview = asyncHandler(async (req, res) => {
     const { rating, comment } = req.body;
     const { orderId } = req.params;

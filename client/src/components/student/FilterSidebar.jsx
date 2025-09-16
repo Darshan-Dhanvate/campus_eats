@@ -30,7 +30,8 @@ const FilterSidebar = ({ isOpen, onClose, onApplyFilters, canteens }) => {
         <>
             {/* Overlay */}
             <div 
-                className={`fixed inset-0 bg-black bg-opacity-50 z-30 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                // FIX: Changed bg-black bg-opacity-50 to bg-black/60 for a semi-transparent overlay
+                className={`fixed inset-0 bg-black/60 z-30 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
                 onClick={onClose}
             ></div>
 

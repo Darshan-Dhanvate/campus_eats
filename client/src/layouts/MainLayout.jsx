@@ -1,18 +1,14 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import AiButton from '../components/common/AiButton'; // Import the new components
-import AiChatPanel from '../components/common/AiChatPanel';
-
-const UserIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
-  </svg>
-);
+import AiButton from '../components/common/AiButton';
+import AiChatPanel from '../components/common/AiChatPanel'; // Student's AI Panel
+import AiCanteenPanel from '../components/canteen/AiCanteenPanel'; // Canteen's AI Panel
 
 const MainLayout = () => {
   const { user, logout } = useAuth();
-  const [isChatOpen, setIsChatOpen] = useState(false); // State to manage the chat panel
+  const [isStudentAiOpen, setIsStudentAiOpen] = useState(false);
+  const [isCanteenAiOpen, setIsCanteenAiOpen] = useState(false);
 
   const studentLinks = [
     { name: 'Browse Canteens', path: '/student/browse' },
@@ -28,6 +24,14 @@ const MainLayout = () => {
   ];
 
   const navLinks = user?.role === 'student' ? studentLinks : canteenLinks;
+
+  const openAiPanel = () => {
+    if (user?.role === 'student') {
+      setIsStudentAiOpen(true);
+    } else if (user?.role === 'canteen') {
+      setIsCanteenAiOpen(true);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-brand-light-gray">
@@ -80,11 +84,12 @@ const MainLayout = () => {
         </div>
       </main>
 
-      {/* Conditionally render AI chat components for students only */}
-      {user?.role === 'student' && (
+      {/* Conditionally render the correct AI feature based on user role */}
+      {user && (
         <>
-          <AiButton onClick={() => setIsChatOpen(true)} />
-          <AiChatPanel isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+          <AiButton onClick={openAiPanel} />
+          <AiChatPanel isOpen={isStudentAiOpen} onClose={() => setIsStudentAiOpen(false)} />
+          <AiCanteenPanel isOpen={isCanteenAiOpen} onClose={() => setIsCanteenAiOpen(false)} />
         </>
       )}
     </div>
