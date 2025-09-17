@@ -2,10 +2,10 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { User } from '../models/User.model.js';
 import { MenuItem } from '../models/MenuItem.model.js';
 import { Review } from '../models/Review.model.js';
-import { Order } from '../models/Order.model.js'; // Import the Order model
+import { Order } from '../models/Order.model.js';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Helper function for API retries
+// Helper for retrying Gemini API calls
 const withRetry = async (apiCall, retries = 3, delay = 1000) => {
     try {
         return await apiCall();
@@ -19,9 +19,10 @@ const withRetry = async (apiCall, retries = 3, delay = 1000) => {
     }
 };
 
-
+// =======================
+// Student Food Recommender
+// =======================
 const getFoodRecommendation = asyncHandler(async (req, res) => {
-    // ... (student food recommender logic remains the same)
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const { query, chatHistory } = req.body;
 
@@ -34,8 +35,7 @@ const getFoodRecommendation = asyncHandler(async (req, res) => {
     const menuItems = await MenuItem.find({ isAvailable: true }).populate('canteen', 'canteenDetails.canteenName');
     const reviews = await Review.find().limit(50).sort({ createdAt: -1 });
 
-    let context = "You are an expert food recommender for a college campus... (Full context prompt remains the same)";
-    context += "You are an expert food recommender for a college campus. Your goal is to give personalized, helpful, and specific food recommendations to students based on the data provided.\n\n";
+    let context = "You are an expert food recommender for a college campus. Your goal is to give personalized, helpful, and specific food recommendations to students based on the data provided.\n\n";
     canteens.forEach(c => {
         context += `- ${c.canteenDetails.canteenName} located at ${c.canteenDetails.canteenAddress}. Currently ${c.canteenDetails.isOpen ? 'Open' : 'Closed'}.\n`;
     });
@@ -51,44 +51,39 @@ const getFoodRecommendation = asyncHandler(async (req, res) => {
     context += `Based on all the data above, and the student's conversation history, provide a helpful and friendly recommendation for the following query: "${query}". Be specific, mention menu item names and the canteens they are from. Keep your response concise and conversational.`;
 
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash"});
-        
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         let conversationHistory = [...chatHistory];
         if (conversationHistory.length > 0 && conversationHistory[0].from === 'ai') {
-            conversationHistory.shift(); 
+            conversationHistory.shift();
         }
-        
+
         const history = conversationHistory.map(msg => ({
             role: msg.from === 'ai' ? 'model' : 'user',
             parts: [{ text: msg.text }],
         }));
-        
+
         const chat = model.startChat({ history });
         const result = await withRetry(() => chat.sendMessage(context));
         const response = await result.response;
         const text = response.text();
 
         res.status(200).json({ recommendation: text });
-
     } catch (error) {
         console.error("Gemini API Error:", error);
         res.status(500).json({ message: "Failed to get AI recommendation." });
     }
 });
 
-
-// @desc    Get AI-powered analysis for the canteen owner
-// @route   POST /api/v1/ai/analyze
-// @access  Private (Canteen)
+// =======================
+// Canteen Performance Analysis
+// =======================
 const getCanteenAnalysis = asyncHandler(async (req, res) => {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const canteenId = req.user._id;
 
-    // 1. Fetch relevant data
     const reviews = await Review.find({ canteen: canteenId }).sort({ createdAt: -1 }).limit(50);
     const orders = await Order.find({ canteen: canteenId, status: 'Completed' }).populate('items.menuItem', 'name');
 
-    // 2. Process data to calculate key metrics
     let totalPrepTime = 0;
     let ordersWithPrepTime = 0;
     const itemPerformance = {};
@@ -98,7 +93,7 @@ const getCanteenAnalysis = asyncHandler(async (req, res) => {
         const readyEntry = order.statusHistory.find(h => h.status === 'Ready');
 
         if (acceptedEntry && readyEntry) {
-            const prepTime = (readyEntry.timestamp - acceptedEntry.timestamp) / (1000 * 60); // in minutes
+            const prepTime = (readyEntry.timestamp - acceptedEntry.timestamp) / (1000 * 60);
             totalPrepTime += prepTime;
             ordersWithPrepTime++;
         }
@@ -114,12 +109,10 @@ const getCanteenAnalysis = asyncHandler(async (req, res) => {
 
     const avgPrepTime = ordersWithPrepTime > 0 ? (totalPrepTime / ordersWithPrepTime).toFixed(2) : 0;
 
-    // 3. Format the data into a comprehensive prompt
-    let context = "You are an expert business analyst for a college canteen. Your goal is to provide a concise, actionable analysis of the canteen's performance based on the data provided. Use bullet points and bold text for clarity.\n\n";
-    
+    let context = "You are an expert business analyst for a college canteen. Provide a concise, actionable analysis of the canteen's performance.\n\n";
     context += `=== PERFORMANCE DATA ===\n`;
     context += `- Average Preparation Time: ${avgPrepTime} minutes.\n`;
-    
+
     context += "\n=== POPULAR ITEMS (by quantity sold) ===\n";
     Object.entries(itemPerformance).forEach(([name, data]) => {
         context += `- ${name}: ${data.count} sold.\n`;
@@ -131,9 +124,8 @@ const getCanteenAnalysis = asyncHandler(async (req, res) => {
     });
 
     context += "\n=== TASK ===\n";
-    context += "Based on all the data above, provide a summary of the canteen's performance. Identify one key strength and one area for improvement. Suggest a specific, actionable tip to help the canteen improve.";
-    
-    // 4. Call the Gemini API
+    context += "Identify one key strength and one area for improvement. Suggest one actionable tip.";
+
     try {
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         const result = await withRetry(() => model.generateContent(context));
@@ -147,6 +139,58 @@ const getCanteenAnalysis = asyncHandler(async (req, res) => {
     }
 });
 
+// =======================
+// Follow-up Question Handler
+// =======================
+const getCanteenFollowUp = asyncHandler(async (req, res) => {
+    const { history, question } = req.body;
 
-export { getFoodRecommendation, getCanteenAnalysis };
+    if (!question) {
+        res.status(400);
+        throw new Error("Follow-up question is required.");
+    }
 
+    try {
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        let filteredHistory = [...history];
+
+        // ✅ Extract AI's first analysis message as context (if present)
+        let initialAnalysis = null;
+        if (filteredHistory.length > 0 && filteredHistory[0].from === 'ai') {
+            initialAnalysis = filteredHistory[0].text;
+            filteredHistory.shift();
+        }
+
+        // ✅ Prepare a combined context
+        let systemContext = "You are an AI business analyst for a college canteen. " +
+            "You previously generated the following performance analysis for this canteen:\n\n" +
+            (initialAnalysis ? `"${initialAnalysis}"` : "No previous analysis available.") +
+            "\n\nContinue the conversation, answering the user's follow-up question based on this context.";
+
+        // ✅ Build chat history ensuring first message is from the user
+        const chatHistory = [
+            { role: "user", parts: [{ text: systemContext }] },
+            ...filteredHistory.map(msg => ({
+                role: msg.from === 'ai' ? 'model' : 'user',
+                parts: [{ text: msg.text }]
+            }))
+        ];
+
+        const chat = model.startChat({ history: chatHistory });
+
+        const result = await withRetry(() => chat.sendMessage(question));
+        const response = await result.response;
+        const text = response.text();
+
+        res.status(200).json({ answer: text });
+    } catch (error) {
+        console.error("Follow-up Gemini API Error:", error);
+        res.status(500).json({ message: "Failed to get follow-up answer." });
+    }
+});
+
+
+
+export { getFoodRecommendation, getCanteenAnalysis, getCanteenFollowUp };
