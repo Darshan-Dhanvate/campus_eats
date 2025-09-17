@@ -155,21 +155,20 @@ const getCanteenFollowUp = asyncHandler(async (req, res) => {
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         let filteredHistory = [...history];
-
-        // ✅ Extract AI's first analysis message as context (if present)
         let initialAnalysis = null;
+
         if (filteredHistory.length > 0 && filteredHistory[0].from === 'ai') {
             initialAnalysis = filteredHistory[0].text;
             filteredHistory.shift();
         }
 
-        // ✅ Prepare a combined context
-        let systemContext = "You are an AI business analyst for a college canteen. " +
-            "You previously generated the following performance analysis for this canteen:\n\n" +
-            (initialAnalysis ? `"${initialAnalysis}"` : "No previous analysis available.") +
-            "\n\nContinue the conversation, answering the user's follow-up question based on this context.";
+        const systemContext = 
+            "You are an expert business and menu consultant for a college canteen. " +
+            (initialAnalysis ? `Here is your previous performance analysis:\n"${initialAnalysis}"\n\n` : "") +
+            "Even if the data has limitations, try to give the canteen owner practical, creative, and helpful advice. " +
+            "If asked about new dishes, suggest specific menu items that are generally popular in Indian college canteens, " +
+            "taking into account affordability, speed of preparation, and student preferences.";
 
-        // ✅ Build chat history ensuring first message is from the user
         const chatHistory = [
             { role: "user", parts: [{ text: systemContext }] },
             ...filteredHistory.map(msg => ({
@@ -182,14 +181,14 @@ const getCanteenFollowUp = asyncHandler(async (req, res) => {
 
         const result = await withRetry(() => chat.sendMessage(question));
         const response = await result.response;
-        const text = response.text();
+        res.status(200).json({ answer: response.text() });
 
-        res.status(200).json({ answer: text });
     } catch (error) {
         console.error("Follow-up Gemini API Error:", error);
         res.status(500).json({ message: "Failed to get follow-up answer." });
     }
 });
+
 
 
 

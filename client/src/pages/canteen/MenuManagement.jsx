@@ -113,7 +113,7 @@ const MenuManagement = () => {
                 </div>
                 <button 
                     onClick={() => handleOpenModal()}
-                    className="flex items-center bg-brand-green text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition duration-300"
+                    className="flex items-center bg-[green] text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition duration-300"
                 >
                     <PlusIcon />
                     Add Menu Item
