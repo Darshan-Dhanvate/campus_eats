@@ -1,11 +1,27 @@
 import React from 'react';
-import { useCart } from '../../context/CartContext';
+import { useCart } from '../../context/CartContext'; // ADDED: Import useCart to check for a booked slot
 
-const MenuItemCard = ({ item, canteen }) => {
-    const { addToCart } = useCart();
+// The `onInitiateBooking` prop is still needed for the first item
+const MenuItemCard = ({ item, canteen, onInitiateBooking }) => {
+    // ADDED: Get addToCart and the current bookedSlot from the context
+    const { addToCart, bookedSlot } = useCart();
     
-    // Fallback image if item has no image URL
     const imageUrl = item.imageUrl || `https://placehold.co/150x150/E2E8F0/475569?text=${item.name.replace(/\s/g,'+')}`;
+
+    const handleAddItem = () => {
+        // This is the core of the new logic 👇
+        if (bookedSlot) {
+            // If a slot is already booked, add the item directly to the cart.
+            // We pass the existing bookedSlot and no seatsNeeded, as seats are already accounted for.
+            addToCart(item, canteen, bookedSlot);
+        } else {
+            // If no slot is booked, initiate the booking process by opening the modal.
+            onInitiateBooking(item);
+        }
+    };
+
+    // ADDED: The button text changes depending on whether a slot is booked
+    const buttonText = bookedSlot ? 'Add' : 'Book Slot';
 
     return (
         <div className="bg-white p-4 rounded-lg shadow-sm flex items-start">
@@ -16,11 +32,11 @@ const MenuItemCard = ({ item, canteen }) => {
                 <div className="flex items-center justify-between">
                     <p className="font-semibold text-brand-green text-lg">₹{item.price}</p>
                     <button 
-                        onClick={() => addToCart(item, canteen)}
+                        onClick={handleAddItem} // MODIFIED: Calls the new handler function
                         disabled={!item.isAvailable}
                         className="bg-[green] text-white font-bold py-2 px-5 rounded-lg text-sm hover:bg-green-600 transition duration-300 disabled:bg-gray-300 disabled:cursor-not-allowed"
                     >
-                        {item.isAvailable ? 'Add' : 'Unavailable'}
+                        {item.isAvailable ? buttonText : 'Unavailable'}
                     </button>
                 </div>
             </div>

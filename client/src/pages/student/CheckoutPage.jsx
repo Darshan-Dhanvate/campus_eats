@@ -6,7 +6,7 @@ import api from '../../api/axiosConfig';
 import toast from 'react-hot-toast';
 
 const CheckoutPage = () => {
-    const { cartItems, canteenInfo, cartTotal, clearCart } = useCart();
+    const { cartItems, canteenInfo, bookedSlot, cartTotal, clearCart } = useCart(); // Also get bookedSlot
     const { user } = useAuth();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
@@ -25,13 +25,18 @@ const CheckoutPage = () => {
 
         const orderData = {
             canteen: canteenInfo._id,
-            // FIX: Ensure the items array structure matches the backend model exactly
-            items: cartItems.map(item => ({
-                menuItem: item._id, // The model expects 'menuItem' which is the ID
-                quantity: item.quantity,
-                price: item.price,
+            // MODIFIED: Access the nested 'item' object for each cart item
+            items: cartItems.map(cartItem => ({
+                menuItem: cartItem.item._id, // Use cartItem.item._id
+                quantity: cartItem.quantity,
+                price: cartItem.item.price,      // Use cartItem.item.price
             })),
             totalAmount: cartTotal,
+            // ADDED: Include the booked slot info in the order
+            bookedSlot: {
+                startTime: bookedSlot.startTime,
+                seatsOccupied: bookedSlot.seatsNeeded
+            },
             paymentMethod: 'Card',
             paymentStatus: 'Paid'
         };
@@ -68,13 +73,21 @@ const CheckoutPage = () => {
                 <div className="lg:col-span-1 lg:order-2">
                     <div className="bg-white p-6 rounded-lg shadow-md sticky top-24">
                         <h2 className="text-xl font-semibold border-b pb-4 mb-4">Order Summary</h2>
+                        {/* ADDED: Display booked slot details */}
+                        {bookedSlot && (
+                            <div className="bg-blue-50 text-blue-800 p-3 rounded-lg mb-4 text-sm">
+                                <p><strong>Slot Booked:</strong> {bookedSlot.startTime}</p>
+                                <p><strong>Seats Reserved:</strong> {bookedSlot.seatsNeeded}</p>
+                            </div>
+                        )}
                         <div className="space-y-3 max-h-64 overflow-y-auto pr-2 mb-4">
-                            {cartItems.map(item => (
-                                <div key={item._id} className="flex justify-between items-center text-sm">
+                            {/* MODIFIED: Use cartItem and access the nested item object */}
+                            {cartItems.map(cartItem => (
+                                <div key={cartItem.item._id} className="flex justify-between items-center text-sm">
                                     <div>
-                                        <p className="font-semibold">{item.name} <span className="text-gray-500">x{item.quantity}</span></p>
+                                        <p className="font-semibold">{cartItem.item.name} <span className="text-gray-500">x{cartItem.quantity}</span></p>
                                     </div>
-                                    <p className="text-gray-700">₹{item.price * item.quantity}</p>
+                                    <p className="text-gray-700">₹{cartItem.item.price * cartItem.quantity}</p>
                                 </div>
                             ))}
                         </div>
@@ -127,4 +140,3 @@ const CheckoutPage = () => {
 };
 
 export default CheckoutPage;
-

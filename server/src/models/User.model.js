@@ -2,6 +2,13 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
+// ADDED: A sub-schema for a single 20-minute slot
+const slotSubSchema = new mongoose.Schema({
+  startTime: { type: String, required: true }, // e.g., "12:00 AM"
+  endTime: { type: String, required: true },   // e.g., "12:20 AM"
+  availableSeats: { type: Number, required: true, default: 0 },
+}, { _id: false }); // _id: false prevents Mongoose from creating IDs for sub-documents
+
 const userSchema = new mongoose.Schema(
   {
     name: {
@@ -47,6 +54,12 @@ const userSchema = new mongoose.Schema(
       },
       phone: { type: String },
       operatingHours: { type: String },
+      numberOfSeats: {
+        type: Number,
+        default: 0,
+      },
+      // ADDED: An array to hold the 72 slots for a 24-hour period
+      dailySlots: [slotSubSchema],
       cuisineTypes: { type: [String] },
       description: { type: String },
       isOpen: {
@@ -83,4 +96,3 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 };
 
 export const User = mongoose.model('User', userSchema);
-

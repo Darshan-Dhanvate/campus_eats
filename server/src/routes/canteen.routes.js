@@ -8,8 +8,9 @@ import {
   deleteMenuItem,
   getMyCanteenMenu,
   getMyCanteenOrders,
-  getCompletedOrderHistory, // Import the new function
+  getCompletedOrderHistory,
   getCanteenAnalytics,
+  bookCanteenSlot, // ADDED: Import the new controller
 } from '../controllers/canteen.controller.js';
 import { protect, authorize } from '../middleware/auth.middleware.js';
 
@@ -33,7 +34,6 @@ router
   .route('/orders')
   .get(protect, authorize('canteen'), getMyCanteenOrders);
 
-// FIX: Add the new route for completed order history
 router
     .route('/orders/history')
     .get(protect, authorize('canteen'), getCompletedOrderHistory);
@@ -49,5 +49,10 @@ router.route('/:id').get(getCanteenById);
 router.route('/:id/menu').get(getCanteenMenu);
 
 
-export default router;
+// ADDED: Route for students to book a slot at a specific canteen
+router
+    .route('/:canteenId/slots/book')
+    .post(protect, authorize('student'), bookCanteenSlot);
 
+
+export default router;

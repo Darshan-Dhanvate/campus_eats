@@ -5,11 +5,11 @@ import { Review } from '../models/Review.model.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import mongoose from 'mongoose';
 
-// ... (other functions remain the same)
 const getAllCanteens = asyncHandler(async (req, res) => {
     const canteens = await User.find({ role: 'canteen' }).select('-password');
     res.status(200).json(canteens);
 });
+
 const getCanteenById = asyncHandler(async (req, res) => {
     const canteen = await User.findById(req.params.id).select('-password');
     if (canteen && canteen.role === 'canteen') {
@@ -19,19 +19,23 @@ const getCanteenById = asyncHandler(async (req, res) => {
         throw new Error('Canteen not found');
     }
 });
+
 const getCanteenMenu = asyncHandler(async (req, res) => {
     const menuItems = await MenuItem.find({ canteen: req.params.id }).populate('canteen', 'canteenDetails');
     res.status(200).json(menuItems);
 });
+
 const getMyCanteenMenu = asyncHandler(async (req, res) => {
     const menuItems = await MenuItem.find({ canteen: req.user._id });
     res.status(200).json(menuItems);
 });
+
 const addMenuItem = asyncHandler(async (req, res) => {
     req.body.canteen = req.user._id;
     const menuItem = await MenuItem.create(req.body);
     res.status(201).json(menuItem);
 });
+
 const updateMenuItem = asyncHandler(async (req, res) => {
     let menuItem = await MenuItem.findById(req.params.itemId);
     if (!menuItem) {
@@ -48,6 +52,7 @@ const updateMenuItem = asyncHandler(async (req, res) => {
     });
     res.status(200).json(menuItem);
 });
+
 const deleteMenuItem = asyncHandler(async (req, res) => {
     const menuItem = await MenuItem.findById(req.params.itemId);
     if (!menuItem) {
@@ -61,6 +66,7 @@ const deleteMenuItem = asyncHandler(async (req, res) => {
     await menuItem.deleteOne();
     res.status(200).json({ success: true, data: {} });
 });
+
 const getMyCanteenOrders = asyncHandler(async (req, res) => {
     const activeStatuses = ['Placed', 'Accepted', 'Preparing', 'Ready'];
     const orders = await Order.find({ canteen: req.user._id, status: { $in: activeStatuses } })
@@ -68,6 +74,7 @@ const getMyCanteenOrders = asyncHandler(async (req, res) => {
         .populate('items.menuItem', 'name');
     res.status(200).json(orders);
 });
+
 const updateOrderStatus = asyncHandler(async (req, res) => {
     const { status } = req.body;
     const order = await Order.findById(req.params.id);
@@ -82,9 +89,6 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
     }
 });
 
-// @desc    Get completed order history for the logged-in canteen
-// @route   GET /api/v1/canteens/orders/history
-// @access  Private (Canteen)
 const getCompletedOrderHistory = asyncHandler(async (req, res) => {
     const canteenId = new mongoose.Types.ObjectId(req.user.id);
     
@@ -111,7 +115,6 @@ const getCompletedOrderHistory = asyncHandler(async (req, res) => {
 
         const processedHistory = orderHistory.map(order => {
             let actualPrepTime = null;
-            // FIX: Check if statusHistory exists before trying to access it
             if (order.statusHistory && order.statusHistory.length > 0) {
                 const acceptedEntry = order.statusHistory.find(h => h.status === 'Accepted');
                 const readyEntry = order.statusHistory.find(h => h.status === 'Ready');
@@ -129,10 +132,6 @@ const getCompletedOrderHistory = asyncHandler(async (req, res) => {
     }
 });
 
-
-// @desc    Get analytics data for the logged-in canteen
-// @route   GET /api/v1/canteens/analytics
-// @access  Private (Canteen)
 const getCanteenAnalytics = asyncHandler(async (req, res) => {
     const canteenId = new mongoose.Types.ObjectId(req.user.id);
     const completedOrders = await Order.find({ canteen: canteenId, status: 'Completed' }).populate('items.menuItem', 'prepTime');
@@ -186,11 +185,54 @@ const getCanteenAnalytics = asyncHandler(async (req, res) => {
     });
 });
 
+const bookCanteenSlot = asyncHandler(async (req, res) => {
+    const { canteenId } = req.params;
+    const { startTime, seatsNeeded } = req.body;
+
+    if (!startTime || !seatsNeeded) {
+        res.status(400);
+        throw new Error('Slot start time and number of seats are required.');
+    }
+
+    const canteen = await User.findById(canteenId);
+    if (!canteen || canteen.role !== 'canteen') {
+        res.status(404);
+        throw new Error('Canteen not found.');
+    }
+
+    const slot = canteen.canteenDetails.dailySlots.find(s => s.startTime === startTime);
+
+    if (!slot) {
+        res.status(404);
+        throw new Error('The selected time slot does not exist.');
+    }
+
+    if (slot.availableSeats < seatsNeeded) {
+        res.status(400);
+        throw new Error('Not enough available seats in this slot.');
+    }
+
+    // Decrement the available seats
+    slot.availableSeats -= seatsNeeded;
+
+    // Mark the array as modified so Mongoose knows to save the change
+    canteen.markModified('canteenDetails.dailySlots');
+    await canteen.save();
+
+    res.status(200).json({
+        success: true,
+        message: 'Slot booked successfully!',
+        slot: {
+            startTime: slot.startTime,
+            availableSeats: slot.availableSeats
+        }
+    });
+});
 
 export {
     getAllCanteens, getCanteenById, getCanteenMenu,
     getMyCanteenMenu, addMenuItem, updateMenuItem, deleteMenuItem,
     getMyCanteenOrders, updateOrderStatus, getCompletedOrderHistory,
-    getCanteenAnalytics
+    getCanteenAnalytics,
+    bookCanteenSlot
 };
-
