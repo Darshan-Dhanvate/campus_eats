@@ -4,31 +4,36 @@ import api from '../../api/axiosConfig';
 import toast from 'react-hot-toast';
 import MenuItemCard from '../../components/student/MenuItemCard';
 import CartSidebar from '../../components/student/CartSidebar';
+import SlotSelectionModal from '../../components/common/SlotSelectionModal'; // Import the new modal
+import { useCart } from '../../context/CartContext'; // Import useCart
 
 const CanteenMenu = () => {
     const { canteenId } = useParams();
+    const { addToCart } = useCart(); // Get addToCart function from context
     const [canteen, setCanteen] = useState(null);
     const [menuItems, setMenuItems] = useState([]);
     const [loading, setLoading] = useState(true);
+    
+    // State for managing the slot selection modal
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedItem, setSelectedItem] = useState(null);
 
     useEffect(() => {
         const fetchCanteenData = async () => {
             try {
                 setLoading(true);
-                // In a real app, you might have separate endpoints. Here we fetch the user object which contains canteen details.
-                const menuRes = await api.get(`/canteens/${canteenId}/menu`);
+                // Fetch canteen details and menu in parallel for better performance
+                const [canteenRes, menuRes] = await Promise.all([
+                    api.get(`/canteens/${canteenId}`),
+                    api.get(`/canteens/${canteenId}/menu`)
+                ]);
                 
-                // Since the menu items don't contain full canteen details, we might need another call
-                // For now, let's assume the menu endpoint could be improved or we make a second call
-                // This is a placeholder for fetching the specific canteen's details if not in menu items.
-                // For this implementation, we will pass a simplified canteen object to the cart.
+                setCanteen(canteenRes.data);
                 setMenuItems(menuRes.data);
-                // A simplified canteen object for the cart context
-                setCanteen({ _id: canteenId, name: menuRes.data.length > 0 ? menuRes.data[0].canteen.canteenDetails.canteenName : 'Canteen' });
 
             } catch (error) {
-                toast.error('Could not load canteen menu.');
-                console.error("Fetch Canteen Menu Error:", error);
+                toast.error('Could not load canteen data.');
+                console.error("Fetch Canteen Data Error:", error);
             } finally {
                 setLoading(false);
             }
@@ -38,6 +43,34 @@ const CanteenMenu = () => {
             fetchCanteenData();
         }
     }, [canteenId]);
+
+    // Handler to open the modal, passed to MenuItemCard
+    const handleInitiateBooking = (item) => {
+        setSelectedItem(item);
+        setIsModalOpen(true);
+    };
+
+    // Handler to confirm the booking, passed to SlotSelectionModal
+    const handleConfirmBookingAndAddToCart = async (item, canteen, slot, seatsNeeded) => {
+        const toastId = toast.loading('Booking your slot...');
+        try {
+            // Step 1: Call the backend API to reserve the seats in the selected slot
+            await api.post(`/canteens/${canteen._id}/slots/book`, {
+                startTime: slot.startTime,
+                seatsNeeded: seatsNeeded,
+            });
+
+            // Step 2: If the API call is successful, add the item to the cart
+            // You may need to update your CartContext to handle slot and seatsNeeded
+            addToCart(item, canteen, slot, seatsNeeded);
+
+            toast.success(`Slot booked for ${slot.startTime}!`, { id: toastId });
+            setIsModalOpen(false); // Close the modal on success
+
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to book slot.', { id: toastId });
+        }
+    };
 
     const SkeletonCard = () => (
       <div className="bg-white p-4 rounded-lg shadow-sm flex items-start animate-pulse">
@@ -57,57 +90,77 @@ const CanteenMenu = () => {
         return (
              <div className="container mx-auto px-4 py-8">
                  <div className="mb-8 p-6 bg-white rounded-lg shadow-md animate-pulse">
-                    <div className="h-10 bg-gray-300 rounded w-1/2 mb-4"></div>
-                    <div className="h-4 bg-gray-300 rounded w-1/3"></div>
-                </div>
+                     <div className="h-10 bg-gray-300 rounded w-1/2 mb-4"></div>
+                     <div className="h-4 bg-gray-300 rounded w-1/3"></div>
+                 </div>
                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 space-y-4">
-                        <SkeletonCard />
-                        <SkeletonCard />
-                        <SkeletonCard />
-                    </div>
+                     <div className="lg:col-span-2 space-y-4">
+                         <SkeletonCard />
+                         <SkeletonCard />
+                         <SkeletonCard />
+                     </div>
                  </div>
              </div>
         );
     }
 
-    if (!menuItems || menuItems.length === 0) {
-        return <div className="text-center mt-10">This canteen has no menu items available.</div>;
+    if (!canteen) {
+        return <div className="text-center mt-10">Could not find the requested canteen.</div>;
     }
-    
-    // Extract canteen details from the first menu item (assuming they are all from the same canteen)
-    const canteenDetails = menuItems[0].canteen.canteenDetails;
 
     return (
-        <div className="container mx-auto px-4 py-8">
-            <div className="mb-4">
-                <Link to="/student/browse" className="text-sm text-brand-green hover:underline">&larr; Back to all canteens</Link>
-            </div>
-            {/* Canteen Header */}
-            <div className="mb-8 p-6 bg-white rounded-lg shadow-md">
-                <h1 className="text-4xl font-bold text-brand-dark-blue">{canteenDetails.canteenName}</h1>
-                <p className="text-gray-500 mt-2">{canteenDetails.canteenAddress}</p>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                {/* Menu Items Section */}
-                <div className="lg:col-span-2">
-                    <h2 className="text-2xl font-bold mb-4 text-brand-dark-blue">Menu</h2>
-                    <div className="space-y-4">
-                        {menuItems.map(item => <MenuItemCard key={item._id} item={item} canteen={item.canteen} />)}
-                    </div>
+        <>
+            <div className="container mx-auto px-4 py-8">
+                <div className="mb-4">
+                    <Link to="/student/browse" className="text-sm text-brand-green hover:underline">&larr; Back to all canteens</Link>
+                </div>
+                {/* Canteen Header */}
+                <div className="mb-8 p-6 bg-white rounded-lg shadow-md">
+                    <h1 className="text-4xl font-bold text-brand-dark-blue">{canteen.canteenDetails.canteenName}</h1>
+                    <p className="text-gray-500 mt-2">{canteen.canteenDetails.canteenAddress}</p>
                 </div>
 
-                {/* Cart Sidebar Section */}
-                <div className="lg:col-span-1">
-                    <div className="sticky top-24">
-                       <CartSidebar />
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                    {/* Menu Items Section */}
+                    <div className="lg:col-span-2">
+                        <h2 className="text-2xl font-bold mb-4 text-brand-dark-blue">Menu</h2>
+                        {menuItems.length > 0 ? (
+                            <div className="space-y-4">
+                                {menuItems.map(item => (
+                                    <MenuItemCard 
+                                        key={item._id} 
+                                        item={item} 
+                                        canteen={canteen} 
+                                        onInitiateBooking={handleInitiateBooking} // Pass the handler
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            <p>This canteen has no menu items available.</p>
+                        )}
+                    </div>
+
+                    {/* Cart Sidebar Section */}
+                    <div className="lg:col-span-1">
+                        <div className="sticky top-24">
+                           <CartSidebar />
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+
+            {/* Render the modal conditionally */}
+            {selectedItem && (
+                 <SlotSelectionModal 
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                    onConfirm={handleConfirmBookingAndAddToCart}
+                    item={selectedItem}
+                    canteen={canteen}
+                />
+            )}
+        </>
     );
 };
 
 export default CanteenMenu;
-

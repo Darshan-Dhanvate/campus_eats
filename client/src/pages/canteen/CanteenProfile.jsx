@@ -109,6 +109,7 @@ const CanteenProfile = () => {
                             <InfoField label="Phone Number" value={canteenDetails.phone || 'Not provided'} />
                             <InfoField label="Address" value={canteenDetails.canteenAddress} />
                             <InfoField label="Operating Hours" value={canteenDetails.operatingHours || 'Not set'} />
+                            <InfoField label="Number of Seats" value={canteenDetails.numberOfSeats ?? 'Not set'} />
                         </div>
                     </div>
 
@@ -155,4 +156,3 @@ const CanteenProfile = () => {
 };
 
 export default CanteenProfile;
-

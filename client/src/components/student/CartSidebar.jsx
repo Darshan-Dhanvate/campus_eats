@@ -23,7 +23,8 @@ const TrashIcon = () => (
 
 
 const CartSidebar = () => {
-    const { cartItems, canteenInfo, addToCart, removeFromCart, clearCart, cartTotal } = useCart();
+    // MODIFIED: We now also get bookedSlot to display info
+    const { cartItems, canteenInfo, bookedSlot, addToCart, removeFromCart, clearCart, cartTotal } = useCart();
 
     return (
         <div className="bg-white p-6 rounded-lg shadow-md">
@@ -36,22 +37,35 @@ const CartSidebar = () => {
                 )}
             </div>
 
+            {/* ADDED: Display the booked slot time if it exists */}
+            {bookedSlot && (
+                <div className="bg-blue-50 text-blue-800 p-3 rounded-lg mb-4 text-sm">
+                    <p><strong>Slot Booked:</strong> {bookedSlot.startTime}</p>
+                    <p><strong>Seats Reserved:</strong> {bookedSlot.seatsNeeded}</p>
+                </div>
+            )}
+
             {cartItems.length === 0 ? (
                 <p className="text-center text-gray-500 py-12">Your cart is empty</p>
             ) : (
                 <div className="space-y-4 max-h-64 overflow-y-auto pr-2">
-                    {cartItems.map(item => (
-                        <div key={item._id} className="flex items-center justify-between">
+                    {/* MODIFIED: Changed `item` to `cartItem` to avoid confusion */}
+                    {cartItems.map(cartItem => (
+                        <div key={cartItem.item._id} className="flex items-center justify-between">
                             <div>
-                                <p className="font-semibold text-sm">{item.name}</p>
-                                <p className="text-sm text-brand-green">₹{item.price}</p>
+                                {/* MODIFIED: Access properties via `cartItem.item` */}
+                                <p className="font-semibold text-sm">{cartItem.item.name}</p>
+                                <p className="text-sm text-brand-green">₹{cartItem.item.price}</p>
                             </div>
                             <div className="flex items-center border rounded-lg">
-                                <button onClick={() => removeFromCart(item._id)} className="px-2 py-1 text-gray-600 hover:bg-gray-100 rounded-l-lg">
+                                {/* MODIFIED: Pass the correct item ID */}
+                                <button onClick={() => removeFromCart(cartItem.item._id)} className="px-2 py-1 text-gray-600 hover:bg-gray-100 rounded-l-lg">
                                     <MinusIcon />
                                 </button>
-                                <span className="px-3 py-1 text-sm font-bold">{item.quantity}</span>
-                                <button onClick={() => addToCart(item, canteenInfo)} className="px-2 py-1 text-gray-600 hover:bg-gray-100 rounded-r-lg">
+                                {/* MODIFIED: Access quantity directly */}
+                                <span className="px-3 py-1 text-sm font-bold">{cartItem.quantity}</span>
+                                {/* MODIFIED: Pass the correct item object */}
+                                <button onClick={() => addToCart(cartItem.item, canteenInfo)} className="px-2 py-1 text-gray-600 hover:bg-gray-100 rounded-r-lg">
                                     <PlusIcon />
                                 </button>
                             </div>
@@ -62,15 +76,15 @@ const CartSidebar = () => {
 
             {cartItems.length > 0 && (
                  <div className="border-t mt-4 pt-4">
-                    <div className="flex justify-between text-lg font-bold">
-                        <span>Total</span>
-                        <span>₹{cartTotal}</span>
-                    </div>
-                     <Link to="/checkout">
-                         <button className="w-full bg-[green] text-white font-bold py-3 rounded-lg mt-4 hover:bg-green-600 transition duration-300">
-                             Go to Checkout
-                         </button>
-                    </Link>
+                     <div className="flex justify-between text-lg font-bold">
+                         <span>Total</span>
+                         <span>₹{cartTotal}</span>
+                     </div>
+                      <Link to="/checkout">
+                          <button className="w-full bg-[green] text-white font-bold py-3 rounded-lg mt-4 hover:bg-green-600 transition duration-300">
+                              Go to Checkout
+                          </button>
+                      </Link>
                  </div>
             )}
         </div>
