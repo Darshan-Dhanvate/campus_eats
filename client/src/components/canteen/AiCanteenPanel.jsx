@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import ReactMarkdown from 'react-markdown';
+import MarkdownRenderer from '../common/MarkdownRenderer';
 import api from '../../api/axiosConfig';
 import toast from 'react-hot-toast';
 
@@ -75,7 +75,7 @@ const AiCanteenPanel = ({ isOpen, onClose }) => {
                         <div key={index} className={`flex ${msg.from === 'user' ? 'justify-end' : 'justify-start'}`}>
                             <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${msg.from === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'}`}>
                                 <div className="prose prose-sm">
-                                    <ReactMarkdown>{msg.text}</ReactMarkdown>
+                                    <MarkdownRenderer content={msg.text} />
                                 </div>
                             </div>
                         </div>
