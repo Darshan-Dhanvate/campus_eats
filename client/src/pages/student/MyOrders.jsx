@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import api from '../../api/axiosConfig';
 import toast from 'react-hot-toast';
 import OrderCard from '../../components/student/OrderCard';
+import SpendingAnalysisModal from '../../components/student/SpendingAnalysisModal';
 
 const MyOrders = () => {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('All Orders');
+    const [isSpendingAnalysisOpen, setIsSpendingAnalysisOpen] = useState(false);
 
     const fetchOrders = async () => {
         try {
@@ -76,8 +78,17 @@ const MyOrders = () => {
     return (
         // FIX: Added the max-width container as requested
         <div className="max-w-4xl mx-auto">
-            <div className="mb-8">
+            <div className="mb-8 flex justify-between items-center">
                 <h1 className="text-3xl font-bold text-brand-dark-blue">My Orders</h1>
+                <button
+                    onClick={() => setIsSpendingAnalysisOpen(true)}
+                    className="bg-brand-green text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors duration-200 font-medium flex items-center space-x-2"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    <span>View Spending Analysis</span>
+                </button>
             </div>
 
             <div className="bg-white rounded-lg shadow-sm p-2 mb-6 flex space-x-2">
@@ -103,6 +114,11 @@ const MyOrders = () => {
                     </div>
                 )}
             </div>
+            
+            <SpendingAnalysisModal
+                isOpen={isSpendingAnalysisOpen}
+                onClose={() => setIsSpendingAnalysisOpen(false)}
+            />
         </div>
     );
 };

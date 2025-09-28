@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../api/axiosConfig';
 import toast from 'react-hot-toast';
+import ReceiptModal from '../../components/student/ReceiptModal';
 
 // Reusable star rating component
 const StarRating = ({ rating }) => {
@@ -29,6 +30,8 @@ const OrderHistory = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [dateFilter, setDateFilter] = useState('');
+    const [selectedOrder, setSelectedOrder] = useState(null);
+    const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
 
     useEffect(() => {
         const fetchHistory = async () => {
@@ -95,6 +98,7 @@ const OrderHistory = () => {
                                 <th scope="col" className="px-6 py-3">Products Ordered</th>
                                 <th scope="col" className="px-6 py-3">Prep Time (Est vs Actual)</th>
                                 <th scope="col" className="px-6 py-3">Review</th>
+                                <th scope="col" className="px-6 py-3">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -123,16 +127,33 @@ const OrderHistory = () => {
                                             <span className="text-gray-400">Not Rated</span>
                                         )}
                                     </td>
+                                    <td className="px-6 py-4">
+                                        <button
+                                            onClick={() => {
+                                                setSelectedOrder(order);
+                                                setIsReceiptModalOpen(true);
+                                            }}
+                                            className="text-blue-600 hover:underline text-sm font-medium"
+                                        >
+                                            View Receipt
+                                        </button>
+                                    </td>
                                 </tr>
                             )) : (
                                 <tr>
-                                    <td colSpan="4" className="text-center py-10">No completed orders found for the selected criteria.</td>
+                                    <td colSpan="5" className="text-center py-10">No completed orders found for the selected criteria.</td>
                                 </tr>
                             )}
                         </tbody>
                     </table>
                 </div>
             </div>
+            
+            <ReceiptModal
+                isOpen={isReceiptModalOpen}
+                onClose={() => setIsReceiptModalOpen(false)}
+                order={selectedOrder}
+            />
         </div>
     );
 };

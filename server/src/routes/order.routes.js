@@ -4,6 +4,7 @@ import {
     getMyOrders,
     updateOrderStatus,
     addOrderReview,
+    getSpendingAnalysis,
 } from '../controllers/order.controller.js';
 import { protect, authorize } from '../middleware/auth.middleware.js';
 
@@ -14,6 +15,9 @@ router.route('/')
 
 router.route('/my-orders')
     .get(protect, getMyOrders);
+
+router.route('/spending-analysis')
+    .get(protect, authorize('student'), getSpendingAnalysis);
 
 // FIX: Ensure authorize middleware is used for canteen-specific actions
 router.route('/:id/status')

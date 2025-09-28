@@ -93,27 +93,22 @@ const getCompletedOrderHistory = asyncHandler(async (req, res) => {
     const canteenId = new mongoose.Types.ObjectId(req.user.id);
     
     try {
-        const orderHistory = await Order.aggregate([
-            { $match: { canteen: canteenId, status: 'Completed' } },
-            { $lookup: { from: 'reviews', localField: '_id', foreignField: 'order', as: 'review' } },
-            { $lookup: { from: 'users', localField: 'user', foreignField: '_id', as: 'userDetails' } },
-            { $unwind: '$userDetails' },
-            { $unwind: { path: '$review', preserveNullAndEmptyArrays: true } },
-            { $lookup: { from: 'menuitems', localField: 'items.menuItem', foreignField: '_id', as: 'menuItemDetails' } },
-            {
-                $project: {
-                    _id: 1, createdAt: 1, totalAmount: 1,
-                    studentName: '$userDetails.name',
-                    rating: '$review.rating', comment: '$review.comment',
-                    products: '$menuItemDetails.name',
-                    estimatedPrepTime: { $sum: '$menuItemDetails.prepTime' },
-                    statusHistory: 1,
-                }
-            },
-            { $sort: { createdAt: -1 } }
-        ]);
+        // Get completed orders with proper population for receipt modal compatibility
+        const orders = await Order.find({ canteen: canteenId, status: 'Completed' })
+            .populate('user', 'name')
+            .populate('canteen', 'canteenDetails')
+            .populate('items.menuItem', 'name price')
+            .sort({ createdAt: -1 });
 
-        const processedHistory = orderHistory.map(order => {
+        // Get reviews for these orders
+        const orderIds = orders.map(order => order._id);
+        const reviews = await Review.find({ order: { $in: orderIds } });
+        const reviewMap = {};
+        reviews.forEach(review => {
+            reviewMap[review.order.toString()] = review;
+        });
+
+        const processedHistory = orders.map(order => {
             let actualPrepTime = null;
             if (order.statusHistory && order.statusHistory.length > 0) {
                 const acceptedEntry = order.statusHistory.find(h => h.status === 'Accepted');
@@ -122,7 +117,26 @@ const getCompletedOrderHistory = asyncHandler(async (req, res) => {
                     actualPrepTime = ((readyEntry.timestamp - acceptedEntry.timestamp) / (1000 * 60)).toFixed(2);
                 }
             }
-            return { ...order, actualPrepTime };
+
+            const review = reviewMap[order._id.toString()];
+            const estimatedPrepTime = order.items.reduce((sum, item) => sum + (item.menuItem.prepTime || 0), 0);
+
+            return {
+                _id: order._id,
+                createdAt: order.createdAt,
+                totalAmount: order.totalAmount,
+                status: order.status,
+                items: order.items,
+                canteen: order.canteen,
+                deliverySlot: order.deliverySlot,
+                statusHistory: order.statusHistory,
+                studentName: order.user.name,
+                rating: review ? review.rating : null,
+                comment: review ? review.comment : null,
+                products: order.items.map(item => item.menuItem.name),
+                estimatedPrepTime,
+                actualPrepTime
+            };
         });
 
         res.status(200).json(processedHistory);

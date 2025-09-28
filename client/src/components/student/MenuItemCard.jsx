@@ -8,6 +8,10 @@ const MenuItemCard = ({ item, canteen, onInitiateBooking }) => {
     
     const imageUrl = item.imageUrl || `https://placehold.co/150x150/E2E8F0/475569?text=${item.name.replace(/\s/g,'+')}`;
 
+    // Calculate discounted price
+    const hasDiscount = item.discountPercentage && item.discountPercentage > 0;
+    const discountedPrice = hasDiscount ? (item.price * (1 - item.discountPercentage / 100)).toFixed(2) : item.price;
+
     const handleAddItem = () => {
         // This is the core of the new logic 👇
         if (bookedSlot) {
@@ -24,13 +28,28 @@ const MenuItemCard = ({ item, canteen, onInitiateBooking }) => {
     const buttonText = bookedSlot ? 'Add' : 'Book Slot';
 
     return (
-        <div className="bg-white p-4 rounded-lg shadow-sm flex items-start">
+        <div className="bg-white p-4 rounded-lg shadow-sm flex items-start relative">
+            {hasDiscount && (
+                <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-bold flex items-center shadow-lg animate-pulse">
+                    <span className="text-yellow-300 mr-1">★</span>
+                    {item.discountPercentage}% OFF
+                </div>
+            )}
             <img src={imageUrl} alt={item.name} className="w-24 h-24 rounded-md object-cover mr-4 flex-shrink-0" />
             <div className="flex-grow">
                 <h4 className="font-bold text-lg text-brand-dark-blue">{item.name}</h4>
                 <p className="text-sm text-gray-500 mt-1 mb-2">{item.description}</p>
                 <div className="flex items-center justify-between">
-                    <p className="font-semibold text-brand-green text-lg">₹{item.price}</p>
+                    <div className="flex items-center space-x-2">
+                        {hasDiscount ? (
+                            <>
+                                <p className="font-semibold text-brand-green text-lg">₹{discountedPrice}</p>
+                                <p className="text-sm text-gray-500 line-through">₹{item.price}</p>
+                            </>
+                        ) : (
+                            <p className="font-semibold text-brand-green text-lg">₹{item.price}</p>
+                        )}
+                    </div>
                     <button 
                         onClick={handleAddItem} // MODIFIED: Calls the new handler function
                         disabled={!item.isAvailable}

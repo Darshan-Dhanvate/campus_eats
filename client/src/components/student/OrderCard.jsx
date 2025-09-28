@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../api/axiosConfig';
 import toast from 'react-hot-toast';
 import ReviewModal from './ReviewModal';
+import ReceiptModal from './ReceiptModal';
 import { useCart } from '../../context/CartContext';
 
 // Helper to format date and time
@@ -62,6 +63,7 @@ const OrderCard = ({ order }) => {
     const isActiveOrder = ['Placed', 'Accepted', 'Preparing', 'Ready'].includes(status);
 
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+    const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
     const [isReviewed, setIsReviewed] = useState(order.isReviewed || false);
 
     const { addToCart, clearCart, cartItems } = useCart();
@@ -126,18 +128,40 @@ const OrderCard = ({ order }) => {
                     </div>
 
                     {isActiveOrder ? (
-                        <OrderProgressBar status={status} />
-                    ) : (
-                        status === 'Completed' && (
-                            <div className="flex items-center space-x-4 text-sm font-medium">
-                                {isReviewed ? (
-                                    <span className="text-gray-500 font-semibold">Reviewed</span>
-                                ) : (
-                                    <button onClick={() => setIsReviewModalOpen(true)} className="text-brand-green hover:underline">Rate Order</button>
-                                )}
-                                <button onClick={handleReorder} className="text-gray-600 hover:underline">Reorder</button>
+                        <div>
+                            <OrderProgressBar status={status} />
+                            <div className="flex justify-end mt-3">
+                                <button 
+                                    onClick={() => setIsReceiptModalOpen(true)} 
+                                    className="text-blue-600 hover:underline text-sm font-medium"
+                                >
+                                    View Receipt
+                                </button>
                             </div>
-                        )
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-4 text-sm font-medium">
+                                {status === 'Completed' && (
+                                    <>
+                                        {isReviewed ? (
+                                            <span className="text-gray-500 font-semibold">Reviewed</span>
+                                        ) : (
+                                            <button onClick={() => setIsReviewModalOpen(true)} className="text-brand-green hover:underline">Rate Order</button>
+                                        )}
+                                        <button onClick={handleReorder} className="text-gray-600 hover:underline">Reorder</button>
+                                    </>
+                                )}
+                                {(status === 'Completed' || status === 'Cancelled') && (
+                                    <button 
+                                        onClick={() => setIsReceiptModalOpen(true)} 
+                                        className="text-blue-600 hover:underline"
+                                    >
+                                        View Receipt
+                                    </button>
+                                )}
+                            </div>
+                        </div>
                     )}
                 </div>
             </div>
@@ -146,6 +170,12 @@ const OrderCard = ({ order }) => {
                 isOpen={isReviewModalOpen}
                 onClose={() => setIsReviewModalOpen(false)}
                 onSubmit={handleSubmitReview}
+                order={order}
+            />
+            
+            <ReceiptModal
+                isOpen={isReceiptModalOpen}
+                onClose={() => setIsReceiptModalOpen(false)}
                 order={order}
             />
         </>

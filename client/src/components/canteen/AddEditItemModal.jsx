@@ -7,6 +7,7 @@ const AddEditItemModal = ({ isOpen, onClose, onSave, itemToEdit }) => {
         price: '',
         category: '',
         prepTime: '',
+        discountPercentage: 0,
         isAvailable: true,
     });
     const [loading, setLoading] = useState(false);
@@ -20,12 +21,13 @@ const AddEditItemModal = ({ isOpen, onClose, onSave, itemToEdit }) => {
                 price: itemToEdit.price || '',
                 category: itemToEdit.category || '',
                 prepTime: itemToEdit.prepTime || '',
+                discountPercentage: itemToEdit.discountPercentage || 0,
                 isAvailable: itemToEdit.isAvailable !== undefined ? itemToEdit.isAvailable : true,
             });
         } else {
             // If adding a new item, reset the form
             setItemData({
-                name: '', description: '', price: '', category: '', prepTime: '', isAvailable: true,
+                name: '', description: '', price: '', category: '', prepTime: '', discountPercentage: 0, isAvailable: true,
             });
         }
     }, [itemToEdit, isOpen]);
@@ -73,6 +75,10 @@ const AddEditItemModal = ({ isOpen, onClose, onSave, itemToEdit }) => {
                          <div>
                             <label htmlFor="prepTime" className="block text-sm font-medium text-gray-700">Prep Time (mins)</label>
                             <input type="number" name="prepTime" id="prepTime" value={itemData.prepTime} onChange={handleChange} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
+                        </div>
+                        <div>
+                            <label htmlFor="discountPercentage" className="block text-sm font-medium text-gray-700">Discount (%)</label>
+                            <input type="number" name="discountPercentage" id="discountPercentage" value={itemData.discountPercentage} onChange={handleChange} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" min="0" max="100" placeholder="0" />
                         </div>
                     </div>
                     <div className="mt-6 flex justify-end space-x-4">

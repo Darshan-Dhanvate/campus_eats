@@ -103,5 +103,121 @@ const addOrderReview = asyncHandler(async (req, res) => {
 });
 
 
-export { createOrder, getMyOrders, updateOrderStatus, addOrderReview };
+// @desc    Get spending analysis for logged in user
+// @route   GET /api/v1/orders/spending-analysis
+// @access  Private
+const getSpendingAnalysis = asyncHandler(async (req, res) => {
+    const { period = 'monthly' } = req.query;
+    const userId = req.user._id;
+    
+    let dateFilter = {};
+    let groupBy = {};
+    
+    const now = new Date();
+    
+    switch (period) {
+        case 'weekly':
+            const startOfWeek = new Date(now);
+            startOfWeek.setDate(now.getDate() - now.getDay());
+            startOfWeek.setHours(0, 0, 0, 0);
+            dateFilter = { createdAt: { $gte: startOfWeek } };
+            groupBy = { $dayOfWeek: '$createdAt' };
+            break;
+        case 'yearly':
+            const startOfYear = new Date(now.getFullYear(), 0, 1);
+            dateFilter = { createdAt: { $gte: startOfYear } };
+            groupBy = { $month: '$createdAt' };
+            break;
+        default: // monthly
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            dateFilter = { createdAt: { $gte: startOfMonth } };
+            groupBy = { $dayOfMonth: '$createdAt' };
+    }
+    
+    // Get completed orders for the user in the specified period
+    const orders = await Order.find({
+        user: userId,
+        status: 'Completed',
+        ...dateFilter
+    }).populate('canteen', 'canteenDetails').populate('items.menuItem', 'name category');
+    
+    // Calculate summary
+    const totalSpent = orders.reduce((sum, order) => sum + order.totalAmount, 0);
+    const totalOrders = orders.length;
+    const avgOrderValue = totalOrders > 0 ? (totalSpent / totalOrders).toFixed(2) : 0;
+    
+    // Time-based data
+    const timeData = [];
+    if (period === 'weekly') {
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        for (let i = 0; i < 7; i++) {
+            const dayOrders = orders.filter(order => new Date(order.createdAt).getDay() === i);
+            const dayAmount = dayOrders.reduce((sum, order) => sum + order.totalAmount, 0);
+            timeData.push({ period: days[i], amount: dayAmount });
+        }
+    } else if (period === 'monthly') {
+        for (let i = 1; i <= new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate(); i += 5) {
+            const periodOrders = orders.filter(order => {
+                const day = new Date(order.createdAt).getDate();
+                return day >= i && day < i + 5;
+            });
+            const periodAmount = periodOrders.reduce((sum, order) => sum + order.totalAmount, 0);
+            timeData.push({ period: `${i}-${i+4}`, amount: periodAmount });
+        }
+    } else { // yearly
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        for (let i = 0; i < 12; i++) {
+            const monthOrders = orders.filter(order => new Date(order.createdAt).getMonth() === i);
+            const monthAmount = monthOrders.reduce((sum, order) => sum + order.totalAmount, 0);
+            timeData.push({ period: months[i], amount: monthAmount });
+        }
+    }
+    
+    // Category data
+    const categoryMap = {};
+    orders.forEach(order => {
+        order.items.forEach(item => {
+            const category = item.menuItem.category || 'Other';
+            const amount = item.price * item.quantity;
+            categoryMap[category] = (categoryMap[category] || 0) + amount;
+        });
+    });
+    
+    const categoryData = Object.entries(categoryMap).map(([name, amount]) => ({
+        name,
+        amount: Math.round(amount)
+    }));
+    
+    // Top canteens
+    const canteenMap = {};
+    orders.forEach(order => {
+        const canteenName = order.canteen.canteenDetails.canteenName;
+        if (!canteenMap[canteenName]) {
+            canteenMap[canteenName] = { name: canteenName, amount: 0, orders: 0 };
+        }
+        canteenMap[canteenName].amount += order.totalAmount;
+        canteenMap[canteenName].orders += 1;
+    });
+    
+    const topCanteens = Object.values(canteenMap)
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 5)
+        .map(canteen => ({
+            ...canteen,
+            amount: Math.round(canteen.amount)
+        }));
+    
+    res.json({
+        summary: {
+            totalSpent: Math.round(totalSpent),
+            totalOrders,
+            avgOrderValue: Math.round(avgOrderValue)
+        },
+        timeData,
+        categoryData,
+        topCanteens
+    });
+});
+
+export { createOrder, getMyOrders, updateOrderStatus, addOrderReview, getSpendingAnalysis };
 

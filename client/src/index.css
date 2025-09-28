@@ -18,3 +18,40 @@ body {
   color: #64748B; /* brand-text-light */
 }
 
+/* Brand Color Definitions */
+.text-brand-dark-blue {
+  color: #1E3A8A;
+}
+
+.text-brand-green {
+  color: #059669;
+}
+
+.text-brand-text-light {
+  color: #64748B;
+}
+
+.bg-brand-green {
+  background-color: #059669;
+}
+
+.border-brand-green {
+  border-color: #059669;
+}
+
+.focus\:ring-brand-green:focus {
+  --tw-ring-color: #059669;
+}
+
+.focus\:border-brand-green:focus {
+  border-color: #059669;
+}
+
+.border-brand-medium-gray {
+  border-color: #9CA3AF;
+}
+
+.hover\:text-brand-dark-blue:hover {
+  color: #1E3A8A;
+}
+
