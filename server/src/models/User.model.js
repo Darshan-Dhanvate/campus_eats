@@ -66,6 +66,9 @@ const userSchema = new mongoose.Schema(
         type: Boolean,
         default: true,
       },
+      profileImage: {
+        type: String, // URL/path to the profile image
+      },
     },
   },
   {

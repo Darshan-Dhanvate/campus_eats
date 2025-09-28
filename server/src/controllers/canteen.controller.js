@@ -4,6 +4,7 @@ import { Order } from '../models/Order.model.js';
 import { Review } from '../models/Review.model.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import mongoose from 'mongoose';
+import fs from 'fs';
 
 const getAllCanteens = asyncHandler(async (req, res) => {
     const canteens = await User.find({ role: 'canteen' }).select('-password');
@@ -243,10 +244,69 @@ const bookCanteenSlot = asyncHandler(async (req, res) => {
     });
 });
 
+// @desc    Upload menu item image
+// @route   POST /api/v1/canteens/upload/menu-item-image
+// @access  Private (Canteen)
+const uploadMenuItemImage = asyncHandler(async (req, res) => {
+    if (!req.file) {
+        res.status(400);
+        throw new Error('No image file provided');
+    }
+
+    const imageUrl = `/images/menu-items/${req.file.filename}`;
+
+    res.status(200).json({
+        success: true,
+        message: 'Image uploaded successfully',
+        imageUrl,
+        filename: req.file.filename
+    });
+});
+
+// @desc    Upload canteen profile image
+// @route   POST /api/v1/canteens/upload/profile-image
+// @access  Private (Canteen)
+const uploadCanteenProfileImage = asyncHandler(async (req, res) => {
+    if (!req.file) {
+        res.status(400);
+        throw new Error('No image file provided');
+    }
+
+    const imageUrl = `/images/canteen-profiles/${req.file.filename}`;
+
+    // Update canteen profile with new image
+    const canteen = await User.findById(req.user._id);
+    if (canteen) {
+        // Delete old profile image if exists
+        if (canteen.canteenDetails.profileImage) {
+            try {
+                const oldImagePath = `public${canteen.canteenDetails.profileImage}`;
+                if (fs.existsSync(oldImagePath)) {
+                    fs.unlinkSync(oldImagePath);
+                }
+            } catch (error) {
+                console.log('Error deleting old profile image:', error);
+            }
+        }
+
+        canteen.canteenDetails.profileImage = imageUrl;
+        await canteen.save();
+    }
+
+    res.status(200).json({
+        success: true,
+        message: 'Profile image updated successfully',
+        imageUrl,
+        filename: req.file.filename
+    });
+});
+
 export {
     getAllCanteens, getCanteenById, getCanteenMenu,
     getMyCanteenMenu, addMenuItem, updateMenuItem, deleteMenuItem,
     getMyCanteenOrders, updateOrderStatus, getCompletedOrderHistory,
     getCanteenAnalytics,
-    bookCanteenSlot
+    bookCanteenSlot,
+    uploadMenuItemImage,
+    uploadCanteenProfileImage
 };

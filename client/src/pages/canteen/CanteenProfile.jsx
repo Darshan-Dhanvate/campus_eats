@@ -45,6 +45,7 @@ const CanteenProfile = () => {
         showInDirectory: true,
         acceptOnlineOrders: true,
     });
+    const [uploadingProfileImage, setUploadingProfileImage] = useState(false);
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -77,6 +78,40 @@ const CanteenProfile = () => {
         }
     };
 
+    const handleProfileImageUpload = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        setUploadingProfileImage(true);
+        const formData = new FormData();
+        formData.append('profileImage', file);
+
+        try {
+            const response = await api.post('/canteens/upload/profile-image', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+            
+            if (response.data.success) {
+                // Update user state with new profile image
+                setUser(prev => ({
+                    ...prev,
+                    canteenDetails: {
+                        ...prev.canteenDetails,
+                        profileImage: response.data.imageUrl
+                    }
+                }));
+                toast.success('Profile image updated successfully!');
+            }
+        } catch (error) {
+            toast.error('Failed to upload profile image');
+            console.error('Profile image upload error:', error);
+        } finally {
+            setUploadingProfileImage(false);
+        }
+    };
+
     if (!user) {
         return <div>Loading profile...</div>;
     }
@@ -100,16 +135,61 @@ const CanteenProfile = () => {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-sm">
-                        <h2 className="text-xl font-semibold mb-6 text-brand-dark-blue border-b pb-4">Basic Information</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <InfoField label="Canteen Name" value={canteenDetails.canteenName} />
-                            <InfoField label="Owner Name" value={name} />
-                            <InfoField label="Email Address" value={email} />
-                            <InfoField label="Phone Number" value={canteenDetails.phone || 'Not provided'} />
-                            <InfoField label="Address" value={canteenDetails.canteenAddress} />
-                            <InfoField label="Operating Hours" value={canteenDetails.operatingHours || 'Not set'} />
-                            <InfoField label="Number of Seats" value={canteenDetails.numberOfSeats ?? 'Not set'} />
+                    <div className="lg:col-span-2 space-y-8">
+                        {/* Profile Image Section */}
+                        <div className="bg-white p-6 rounded-lg shadow-sm">
+                            <h2 className="text-xl font-semibold mb-6 text-brand-dark-blue border-b pb-4">Profile Image</h2>
+                            <div className="flex items-center space-x-6">
+                                <div className="w-32 h-32 rounded-lg overflow-hidden border-2 border-gray-200 bg-gray-100 flex items-center justify-center">
+                                    {canteenDetails.profileImage ? (
+                                        <img 
+                                            src={`http://localhost:8000${canteenDetails.profileImage}`} 
+                                            alt="Canteen Profile" 
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        <div className="text-center text-gray-500">
+                                            <svg className="w-12 h-12 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                            </svg>
+                                            <p className="text-sm">No Image</p>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-sm text-gray-600 mb-4">Upload a profile image for your canteen. This will be displayed to students when they browse canteens.</p>
+                                    <label className="cursor-pointer bg-brand-green text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors duration-200 inline-block">
+                                        {uploadingProfileImage ? 'Uploading...' : 'Choose Image'}
+                                        <input 
+                                            type="file" 
+                                            accept="image/*" 
+                                            onChange={handleProfileImageUpload}
+                                            disabled={uploadingProfileImage}
+                                            className="hidden"
+                                        />
+                                    </label>
+                                    {uploadingProfileImage && (
+                                        <div className="mt-2">
+                                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                                <div className="bg-brand-green h-2 rounded-full animate-pulse" style={{width: '60%'}}></div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="bg-white p-6 rounded-lg shadow-sm">
+                            <h2 className="text-xl font-semibold mb-6 text-brand-dark-blue border-b pb-4">Basic Information</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <InfoField label="Canteen Name" value={canteenDetails.canteenName} />
+                                <InfoField label="Owner Name" value={name} />
+                                <InfoField label="Email Address" value={email} />
+                                <InfoField label="Phone Number" value={canteenDetails.phone || 'Not provided'} />
+                                <InfoField label="Address" value={canteenDetails.canteenAddress} />
+                                <InfoField label="Operating Hours" value={canteenDetails.operatingHours || 'Not set'} />
+                                <InfoField label="Number of Seats" value={canteenDetails.numberOfSeats ?? 'Not set'} />
+                            </div>
                         </div>
                     </div>
 

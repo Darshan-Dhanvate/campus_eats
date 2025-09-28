@@ -11,8 +11,11 @@ import {
   getCompletedOrderHistory,
   getCanteenAnalytics,
   bookCanteenSlot, // ADDED: Import the new controller
+  uploadMenuItemImage,
+  uploadCanteenProfileImage,
 } from '../controllers/canteen.controller.js';
 import { protect, authorize } from '../middleware/auth.middleware.js';
+import { uploadMenuItemImage as uploadMenuImage, uploadCanteenProfileImage as uploadProfileImage } from '../middleware/upload.middleware.js';
 
 const router = express.Router();
 
@@ -42,6 +45,14 @@ router
     .route('/analytics')
     .get(protect, authorize('canteen'), getCanteenAnalytics);
 
+// --- Image Upload Routes ---
+router
+    .route('/upload/menu-item-image')
+    .post(protect, authorize('canteen'), uploadMenuImage, uploadMenuItemImage);
+
+router
+    .route('/upload/profile-image')
+    .post(protect, authorize('canteen'), uploadProfileImage, uploadCanteenProfileImage);
 
 // --- Public Routes ---
 router.route('/').get(getAllCanteens);
