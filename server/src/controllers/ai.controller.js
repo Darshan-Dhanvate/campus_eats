@@ -31,9 +31,12 @@ const getFoodRecommendation = asyncHandler(async (req, res) => {
         throw new Error('Query is required.');
     }
 
-    const canteens = await User.find({ role: 'canteen' }).select('canteenDetails');
-    const menuItems = await MenuItem.find({ isAvailable: true }).populate('canteen', 'canteenDetails.canteenName');
-    const reviews = await Review.find().limit(50).sort({ createdAt: -1 });
+    // Fetch only textual fields needed (exclude image or binary heavy data)
+    const canteens = await User.find({ role: 'canteen' }).select('canteenDetails.canteenName canteenDetails.canteenAddress canteenDetails.isOpen');
+    const menuItems = await MenuItem.find({ isAvailable: true })
+        .select('name price category description canteen')
+        .populate('canteen', 'canteenDetails.canteenName');
+    const reviews = await Review.find().limit(50).sort({ createdAt: -1 }).select('rating comment');
 
     let context = "You are an expert food recommender for a college campus. Your goal is to give personalized, helpful, and specific food recommendations to students based on the data provided.\n\n";
     canteens.forEach(c => {
@@ -51,7 +54,9 @@ const getFoodRecommendation = asyncHandler(async (req, res) => {
     context += `Based on all the data above, and the student's conversation history, provide a helpful and friendly recommendation for the following query: "${query}". Be specific, mention menu item names and the canteens they are from. Keep your response concise and conversational.`;
 
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        console.log('[AI][recommend] context characters:', context.length);
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
         let conversationHistory = [...chatHistory];
         if (conversationHistory.length > 0 && conversationHistory[0].from === 'ai') {
             conversationHistory.shift();
@@ -69,75 +74,111 @@ const getFoodRecommendation = asyncHandler(async (req, res) => {
 
         res.status(200).json({ recommendation: text });
     } catch (error) {
-        console.error("Gemini API Error:", error);
-        res.status(500).json({ message: "Failed to get AI recommendation." });
+        console.error("[AI][recommend] Gemini API Error:", error?.message, error?.response?.status);
+        res.status(500).json({ message: "Failed to get AI recommendation.", error: process.env.NODE_ENV === 'development' ? error.message : undefined });
     }
 });
 
 // =======================
 // Canteen Performance Analysis
 // =======================
+// =======================
+// Canteen Performance Analysis (Fixed)
+// =======================
 const getCanteenAnalysis = asyncHandler(async (req, res) => {
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const canteenId = req.user._id;
-
-    const reviews = await Review.find({ canteen: canteenId }).sort({ createdAt: -1 }).limit(50);
-    const orders = await Order.find({ canteen: canteenId, status: 'Completed' }).populate('items.menuItem', 'name');
-
-    let totalPrepTime = 0;
-    let ordersWithPrepTime = 0;
-    const itemPerformance = {};
-
-    orders.forEach(order => {
-        const acceptedEntry = order.statusHistory.find(h => h.status === 'Accepted');
-        const readyEntry = order.statusHistory.find(h => h.status === 'Ready');
-
-        if (acceptedEntry && readyEntry) {
-            const prepTime = (readyEntry.timestamp - acceptedEntry.timestamp) / (1000 * 60);
-            totalPrepTime += prepTime;
-            ordersWithPrepTime++;
+    let stage = 'init';
+    try {
+        const canteenId = req.user?._id;
+        if (!canteenId) {
+            return res.status(400).json({ message: 'Canteen id missing from auth context.', code: 'NO_CANTEEN_ID' });
         }
 
-        order.items.forEach(item => {
-            const name = item.menuItem.name;
-            if (!itemPerformance[name]) {
-                itemPerformance[name] = { count: 0 };
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+        stage = 'fetch';
+        const reviews = await Review.find({ canteen: canteenId })
+            .sort({ createdAt: -1 })
+            .limit(50)
+            .select('rating comment');
+        const orders = await Order.find({ canteen: canteenId, status: 'Completed' })
+            .populate('items.menuItem', 'name')
+            .lean();
+
+        stage = 'aggregate';
+        let totalPrepTime = 0;
+        let ordersWithPrepTime = 0;
+        let skippedOrders = 0;
+        const itemPerformance = {};
+
+        orders.forEach(order => {
+            const statusHistory = Array.isArray(order.statusHistory) ? order.statusHistory : [];
+            if (statusHistory.length === 0) skippedOrders++;
+            const acceptedEntry = statusHistory.find(h => h.status === 'Accepted');
+            const readyEntry = statusHistory.find(h => h.status === 'Ready');
+            if (acceptedEntry && readyEntry) {
+                const prepTime = (new Date(readyEntry.timestamp) - new Date(acceptedEntry.timestamp)) / (1000 * 60);
+                if (!isNaN(prepTime)) {
+                    totalPrepTime += prepTime;
+                    ordersWithPrepTime++;
+                }
             }
-            itemPerformance[name].count += item.quantity;
+            (order.items || []).forEach(item => {
+                if (!item.menuItem) return;
+                const name = item.menuItem.name;
+                if (!itemPerformance[name]) itemPerformance[name] = { count: 0 };
+                itemPerformance[name].count += item.quantity;
+            });
         });
-    });
 
-    const avgPrepTime = ordersWithPrepTime > 0 ? (totalPrepTime / ordersWithPrepTime).toFixed(2) : 0;
+        const avgPrepTime = ordersWithPrepTime > 0 ? (totalPrepTime / ordersWithPrepTime).toFixed(2) : 0;
 
-    let context = "You are an expert business analyst for a college canteen. Provide a concise, actionable analysis of the canteen's performance.\n\n";
-    context += `=== PERFORMANCE DATA ===\n`;
-    context += `- Average Preparation Time: ${avgPrepTime} minutes.\n`;
+        stage = 'prompt-build';
+        let context = `You are an expert business analyst for a college canteen. Provide a concise, actionable analysis for this canteen only.\n\n`;
 
-    context += "\n=== POPULAR ITEMS (by quantity sold) ===\n";
-    Object.entries(itemPerformance).forEach(([name, data]) => {
-        context += `- ${name}: ${data.count} sold.\n`;
-    });
+        context += `=== PERFORMANCE DATA ===\n`;
+        context += `- Average Preparation Time: ${avgPrepTime} minutes.\n`;
+        context += `- Orders With Prep Time Tracked: ${ordersWithPrepTime}. Skipped (no history): ${skippedOrders}. Total Orders Considered: ${orders.length}.\n`;
 
-    context += "\n=== RECENT STUDENT REVIEWS ===\n";
-    reviews.forEach(review => {
-        context += `- Rating: ${review.rating}/5, Comment: "${review.comment || 'No comment'}"\n`;
-    });
+        context += "\n=== POPULAR ITEMS (by quantity sold) ===\n";
+        const sortedItems = Object.entries(itemPerformance)
+            .sort((a, b) => b[1].count - a[1].count)
+            .slice(0, 15);
+        sortedItems.forEach(([name, data]) => {
+            context += `- ${name}: ${data.count} sold.\n`;
+        });
 
-    context += "\n=== TASK ===\n";
-    context += "Identify one key strength and one area for improvement. Suggest one actionable tip.";
+        context += "\n=== RECENT STUDENT REVIEWS ===\n";
+        reviews.forEach(review => {
+            context += `- Rating: ${review.rating}/5, Comment: "${review.comment || 'No comment'}"\n`;
+        });
 
-    try {
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-        const result = await withRetry(() => model.generateContent(context));
+        context += "\n=== TASK ===\n";
+        context += "Identify one key strength and one area for improvement for this canteen. Suggest one actionable tip. Keep under 160 words.";
+
+        // Optional: trim context if too long
+        const MAX_CONTEXT_CHARS = 8000;
+        if (context.length > MAX_CONTEXT_CHARS) {
+            context = context.slice(0, MAX_CONTEXT_CHARS) + '\n...[TRIMMED]';
+        }
+
+        stage = 'model-call';
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const result = await withRetry(() => model.generateContent({ contents: [{ role: 'user', parts: [{ text: context }] }] }));
         const response = await result.response;
         const text = response.text();
 
         res.status(200).json({ analysis: text });
     } catch (error) {
-        console.error("Canteen Analysis Gemini API Error:", error);
-        res.status(500).json({ message: "Failed to get AI analysis." });
+        console.error('[AI][analysis][error]', { stage, message: error?.message, name: error?.name });
+        res.status(500).json({ 
+            message: 'Failed to get AI analysis.', 
+            code: 'AI_ANALYSIS_FAILED', 
+            stage, 
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined 
+        });
     }
 });
+
 
 // =======================
 // Follow-up Question Handler
@@ -152,7 +193,8 @@ const getCanteenFollowUp = asyncHandler(async (req, res) => {
 
     try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
 
         let filteredHistory = [...history];
         let initialAnalysis = null;
@@ -167,7 +209,7 @@ const getCanteenFollowUp = asyncHandler(async (req, res) => {
             (initialAnalysis ? `Here is your previous performance analysis:\n"${initialAnalysis}"\n\n` : "") +
             "Even if the data has limitations, try to give the canteen owner practical, creative, and helpful advice. " +
             "If asked about new dishes, suggest specific menu items that are generally popular in Indian college canteens, " +
-            "taking into account affordability, speed of preparation, and student preferences.";
+            "taking into account affordability, speed of preparation, and student preferences, please dont give unnecessary extar informations";
 
         const chatHistory = [
             { role: "user", parts: [{ text: systemContext }] },
@@ -184,8 +226,8 @@ const getCanteenFollowUp = asyncHandler(async (req, res) => {
         res.status(200).json({ answer: response.text() });
 
     } catch (error) {
-        console.error("Follow-up Gemini API Error:", error);
-        res.status(500).json({ message: "Failed to get follow-up answer." });
+        console.error("[AI][follow-up] Gemini API Error:", error?.message, error?.response?.status);
+        res.status(500).json({ message: "Failed to get follow-up answer.", error: process.env.NODE_ENV === 'development' ? error.message : undefined });
     }
 });
 
