@@ -53,9 +53,16 @@ const CartSidebar = () => {
                     {cartItems.map(cartItem => (
                         <div key={cartItem.item._id} className="flex items-center justify-between">
                             <div>
-                                {/* MODIFIED: Access properties via `cartItem.item` */}
                                 <p className="font-semibold text-sm">{cartItem.item.name}</p>
-                                <p className="text-sm text-brand-green">₹{cartItem.item.price}</p>
+                                {/* Show discounted price if applicable */}
+                                {cartItem.item.discountPercentage && cartItem.item.discountPercentage > 0 ? (
+                                    <div className="flex items-center space-x-2">
+                                        <p className="text-sm text-brand-green">₹{(cartItem.item.price * (1 - cartItem.item.discountPercentage / 100)).toFixed(2)}</p>
+                                        <p className="text-xs text-gray-500 line-through">₹{cartItem.item.price}</p>
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-brand-green">₹{cartItem.item.price}</p>
+                                )}
                             </div>
                             <div className="flex items-center border rounded-lg">
                                 {/* MODIFIED: Pass the correct item ID */}

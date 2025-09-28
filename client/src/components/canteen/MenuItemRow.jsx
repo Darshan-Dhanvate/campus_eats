@@ -16,16 +16,20 @@ const DeleteIcon = () => (
 
 
 const MenuItemRow = ({ item, onEdit, onDelete, onToggleAvailability }) => {
-    const { name, description, price, category, isAvailable, prepTime } = item;
-    // Dummy data for now
+    const { name, description, price, category, isAvailable, prepTime, imageUrl: storedImage } = item;
+    // Dummy rating placeholders (replace with real later)
     const rating = 4.6;
     const reviewCount = 45;
-    const imageUrl = `https://placehold.co/150x150/E2E8F0/475569?text=${name.replace(/\s/g,'+')}`;
+    // Determine image source: prefer absolute URL, else prefix relative with backend base, else placeholder
+    const base = import.meta.env.VITE_API_BASE_URL?.replace(/\/api\/v1$/,'') || 'http://localhost:8000';
+    const resolvedImage = storedImage
+        ? (storedImage.startsWith('http') ? storedImage : `${base}${storedImage}`)
+        : `https://placehold.co/150x150/E2E8F0/475569?text=${encodeURIComponent(name)}`;
 
     return (
         <div className="flex flex-col sm:flex-row items-center justify-between p-4 bg-white rounded-lg shadow-sm">
             <div className="flex items-center w-full sm:w-auto">
-                <img src={imageUrl} alt={name} className="w-20 h-20 rounded-md object-cover mr-4 flex-shrink-0" />
+                <img src={resolvedImage} alt={name} className="w-20 h-20 rounded-md object-cover mr-4 flex-shrink-0" />
                 <div className="flex-grow">
                     <div className="flex items-center mb-1">
                         <h4 className="font-bold text-lg text-brand-dark-blue mr-2">{name}</h4>

@@ -11,10 +11,12 @@ const LocationIcon = () => (
 
 const CanteenCard = ({ canteen }) => {
     // Destructure only the data available from the API
-    const { canteenName, canteenAddress, isOpen } = canteen.canteenDetails;
+    const { canteenName, canteenAddress, isOpen, profileImage } = canteen.canteenDetails;
     
-    // Use a placeholder image generator
-    const imageUrl = `https://placehold.co/600x400/E2E8F0/475569?text=${canteenName.replace(/\s/g,'+')}`;
+    // Use server image if available, otherwise placeholder
+    const imageUrl = profileImage ? 
+        `http://localhost:8000${profileImage}` : 
+        `https://placehold.co/600x400/E2E8F0/475569?text=${canteenName.replace(/\s/g,'+')}`;
 
     return (
         <div className="bg-white rounded-lg shadow-lg overflow-hidden transform hover:-translate-y-1 transition-transform duration-300">

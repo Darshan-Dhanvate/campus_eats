@@ -248,19 +248,39 @@ const bookCanteenSlot = asyncHandler(async (req, res) => {
 // @route   POST /api/v1/canteens/upload/menu-item-image
 // @access  Private (Canteen)
 const uploadMenuItemImage = asyncHandler(async (req, res) => {
+    console.log('\n=== UPLOAD CONTROLLER ===');
+    console.log('User:', req.user ? `${req.user.name} (${req.user._id})` : 'No user (auth disabled / optional)');
+    console.log('File received:', !!req.file);
+    console.log('File details:', req.file ? {
+        filename: req.file.filename,
+        size: req.file.size,
+        mimetype: req.file.mimetype,
+        destination: req.file.destination
+    } : 'No file');
+    
     if (!req.file) {
-        res.status(400);
-        throw new Error('No image file provided');
+        console.log('ERROR: No file provided (controller)');
+        return res.status(400).json({ success: false, error: 'No image file provided' });
     }
 
-    const imageUrl = `/images/menu-items/${req.file.filename}`;
+    try {
+        // Build absolute & relative URLs
+        const base = process.env.BASE_URL || 'http://localhost:8000';
+        const relativeUrl = `/images/menu-items/${req.file.filename}`;
+        const absoluteUrl = `${base}${relativeUrl}`;
+        console.log('SUCCESS: Returning image URL', { relativeUrl, absoluteUrl });
 
-    res.status(200).json({
-        success: true,
-        message: 'Image uploaded successfully',
-        imageUrl,
-        filename: req.file.filename
-    });
+        return res.status(200).json({
+            success: true,
+            message: 'Image uploaded successfully',
+            imageUrl: relativeUrl,
+            absoluteUrl,
+            filename: req.file.filename
+        });
+    } catch (e) {
+        console.error('UNEXPECTED ERROR in uploadMenuItemImage controller:', e);
+        return res.status(500).json({ success: false, error: 'Unexpected error processing image' });
+    }
 });
 
 // @desc    Upload canteen profile image

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import api from '../../api/axiosConfig';
 
 const AddEditItemModal = ({ isOpen, onClose, onSave, itemToEdit }) => {
     const [itemData, setItemData] = useState({
@@ -17,7 +18,14 @@ const AddEditItemModal = ({ isOpen, onClose, onSave, itemToEdit }) => {
     const [uploadingImage, setUploadingImage] = useState(false);
 
     useEffect(() => {
-        // If we are editing, populate the form with the item's data
+        // Helper to resolve stored (possibly relative) URL to absolute for preview
+        const resolvePreview = (stored) => {
+            if (!stored) return null;
+            if (stored.startsWith('http')) return stored; // already absolute
+            const base = import.meta.env.VITE_API_BASE_URL?.replace(/\/api\/v1$/, '') || 'http://localhost:8000';
+            return `${base}${stored}`;
+        };
+
         if (itemToEdit) {
             setItemData({
                 name: itemToEdit.name || '',
@@ -29,10 +37,9 @@ const AddEditItemModal = ({ isOpen, onClose, onSave, itemToEdit }) => {
                 isAvailable: itemToEdit.isAvailable !== undefined ? itemToEdit.isAvailable : true,
                 imageUrl: itemToEdit.imageUrl || '',
             });
-            setImagePreview(itemToEdit.imageUrl || null);
+            setImagePreview(resolvePreview(itemToEdit.imageUrl));
             setImageFile(null);
         } else {
-            // If adding a new item, reset the form
             setItemData({
                 name: '', description: '', price: '', category: '', prepTime: '', discountPercentage: 0, imageUrl: '', isAvailable: true,
             });
@@ -61,25 +68,41 @@ const AddEditItemModal = ({ isOpen, onClose, onSave, itemToEdit }) => {
     const uploadImage = async () => {
         if (!imageFile) return null;
         
+        console.log('🔄 Starting image upload...');
+        console.log('📁 File details:', {
+            name: imageFile.name,
+            size: imageFile.size,
+            type: imageFile.type
+        });
+        
         setUploadingImage(true);
         const formData = new FormData();
         formData.append('image', imageFile);
+        
+        console.log('📡 FormData created, making request to:', '/canteens/upload/menu-item-image');
+        console.log('🌐 Base URL:', import.meta.env.VITE_API_BASE_URL);
 
         try {
-            const response = await fetch('/api/v1/canteens/upload/menu-item-image', {
-                method: 'POST',
-                body: formData,
-                credentials: 'include',
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                return data.imageUrl;
+            const response = await api.post('/canteens/upload/menu-item-image', formData);
+            if (response.data.success) {
+                // Prefer absoluteUrl if server sends it
+                return response.data.absoluteUrl || (import.meta.env.VITE_API_BASE_URL + response.data.imageUrl);
             } else {
                 throw new Error('Failed to upload image');
             }
         } catch (error) {
-            console.error('Image upload error:', error);
+            console.error('❌ Image upload error:', error);
+            console.error('❌ Error details:', {
+                message: error.message,
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                data: error.response?.data,
+                config: {
+                    url: error.config?.url,
+                    method: error.config?.method,
+                    baseURL: error.config?.baseURL
+                }
+            });
             throw error;
         } finally {
             setUploadingImage(false);
@@ -96,7 +119,18 @@ const AddEditItemModal = ({ isOpen, onClose, onSave, itemToEdit }) => {
             // Upload image if a new one is selected
             if (imageFile) {
                 const uploadedImageUrl = await uploadImage();
-                finalItemData.imageUrl = uploadedImageUrl;
+                // If server returned an absolute URL, also store a relative version for consistency when displaying later
+                if (uploadedImageUrl.startsWith('http')) {
+                    try {
+                        const urlObj = new URL(uploadedImageUrl);
+                        const relative = urlObj.pathname + urlObj.search;
+                        finalItemData.imageUrl = relative;
+                    } catch {
+                        finalItemData.imageUrl = uploadedImageUrl; // fallback
+                    }
+                } else {
+                    finalItemData.imageUrl = uploadedImageUrl;
+                }
             }
             
             await onSave(finalItemData);
@@ -143,33 +177,33 @@ const AddEditItemModal = ({ isOpen, onClose, onSave, itemToEdit }) => {
                             <label htmlFor="discountPercentage" className="block text-sm font-medium text-gray-700">Discount (%)</label>
                             <input type="number" name="discountPercentage" id="discountPercentage" value={itemData.discountPercentage} onChange={handleChange} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" min="0" max="100" placeholder="0" />
                         </div>
-                    </div>
-                    
-                    {/* Image Upload Section */}
-                    <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Menu Item Image</label>
-                        <div className="flex items-center space-x-4">
-                            <div className="flex-1">
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleImageChange}
-                                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-brand-green file:text-white hover:file:bg-green-600"
-                                />
-                            </div>
-                            {imagePreview && (
-                                <div className="w-20 h-20 rounded-lg overflow-hidden border border-gray-300">
-                                    <img 
-                                        src={imagePreview} 
-                                        alt="Preview" 
-                                        className="w-full h-full object-cover"
+                        
+                        {/* Image Upload Section */}
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Menu Item Image</label>
+                            <div className="flex items-center space-x-4">
+                                <div className="flex-1">
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleImageChange}
+                                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[green] file:text-white hover:file:bg-green-600"
                                     />
                                 </div>
+                                {imagePreview && (
+                                    <div className="w-20 h-20 rounded-lg overflow-hidden border border-gray-300">
+                                        <img 
+                                            src={imagePreview} 
+                                            alt="Preview" 
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                            {uploadingImage && (
+                                <p className="text-sm text-blue-600 mt-1">Uploading image...</p>
                             )}
                         </div>
-                        {uploadingImage && (
-                            <p className="text-sm text-blue-600 mt-1">Uploading image...</p>
-                        )}
                     </div>
                     <div className="mt-6 flex justify-end space-x-4">
                         <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">

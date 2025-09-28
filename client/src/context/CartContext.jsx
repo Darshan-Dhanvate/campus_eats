@@ -109,7 +109,13 @@ export const CartProvider = ({ children }) => {
         toast.success('Cart cleared.');
     };
 
-    const cartTotal = cartItems.reduce((total, cartItem) => total + cartItem.item.price * cartItem.quantity, 0);
+    const cartTotal = cartItems.reduce((total, cartItem) => {
+        const hasDiscount = cartItem.item.discountPercentage && cartItem.item.discountPercentage > 0;
+        const effectivePrice = hasDiscount ? 
+            cartItem.item.price * (1 - cartItem.item.discountPercentage / 100) : 
+            cartItem.item.price;
+        return total + effectivePrice * cartItem.quantity;
+    }, 0);
 
     return (
         <CartContext.Provider value={{ cartItems, canteenInfo, bookedSlot, addToCart, removeFromCart, clearCart, cartTotal }}>

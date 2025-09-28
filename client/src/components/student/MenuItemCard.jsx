@@ -6,11 +6,12 @@ const MenuItemCard = ({ item, canteen, onInitiateBooking }) => {
     // ADDED: Get addToCart and the current bookedSlot from the context
     const { addToCart, bookedSlot } = useCart();
     
-    const imageUrl = item.imageUrl || `https://placehold.co/150x150/E2E8F0/475569?text=${item.name.replace(/\s/g,'+')}`;
+    // Fix image URL to use server path
+    const imageUrl = item.imageUrl ? `http://localhost:8000${item.imageUrl}` : `https://placehold.co/150x150/E2E8F0/475569?text=${encodeURIComponent(item.name)}`;
 
-    // Calculate discounted price
+    // Calculate discounted price - only show discount if it exists and is greater than 0
     const hasDiscount = item.discountPercentage && item.discountPercentage > 0;
-    const discountedPrice = hasDiscount ? (item.price * (1 - item.discountPercentage / 100)).toFixed(2) : item.price;
+    const discountedPrice = hasDiscount ? (item.price * (1 - item.discountPercentage / 100)).toFixed(2) : null;
 
     const handleAddItem = () => {
         // This is the core of the new logic 👇

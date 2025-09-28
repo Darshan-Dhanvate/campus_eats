@@ -46,9 +46,24 @@ router
     .get(protect, authorize('canteen'), getCanteenAnalytics);
 
 // --- Image Upload Routes ---
-router
-    .route('/upload/menu-item-image')
-    .post(protect, authorize('canteen'), uploadMenuImage, uploadMenuItemImage);
+// Enhanced logging wrapper for menu item image upload (auth intentionally omitted per current requirement)
+router.post('/upload/menu-item-image', (req, res, next) => {
+  console.log('\n[UPLOAD] Incoming menu item image upload');
+  console.log('[UPLOAD] Headers:', req.headers['content-type']);
+  uploadMenuImage(req, res, function (err) {
+    if (err) {
+      console.error('[UPLOAD] Multer error:', err.message);
+      if (!res.headersSent) {
+        // Tag client-friendly error if it's a known validation
+        const status = err.message.startsWith('Only image files') ? 400 : 500;
+        res.status(status).json({ success: false, error: err.message });
+      }
+      return; // Do not proceed to controller
+    }
+    console.log('[UPLOAD] Multer passed. File present?', !!req.file);
+    uploadMenuItemImage(req, res, next);
+  });
+});
 
 router
     .route('/upload/profile-image')

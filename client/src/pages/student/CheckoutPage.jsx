@@ -25,12 +25,18 @@ const CheckoutPage = () => {
 
         const orderData = {
             canteen: canteenInfo._id,
-            // MODIFIED: Access the nested 'item' object for each cart item
-            items: cartItems.map(cartItem => ({
-                menuItem: cartItem.item._id, // Use cartItem.item._id
-                quantity: cartItem.quantity,
-                price: cartItem.item.price,      // Use cartItem.item.price
-            })),
+            // Use discounted prices for order items
+            items: cartItems.map(cartItem => {
+                const hasDiscount = cartItem.item.discountPercentage && cartItem.item.discountPercentage > 0;
+                const effectivePrice = hasDiscount ? 
+                    cartItem.item.price * (1 - cartItem.item.discountPercentage / 100) : 
+                    cartItem.item.price;
+                return {
+                    menuItem: cartItem.item._id,
+                    quantity: cartItem.quantity,
+                    price: effectivePrice,
+                };
+            }),
             totalAmount: cartTotal,
             // ADDED: Include the booked slot info in the order
             bookedSlot: {
@@ -82,14 +88,32 @@ const CheckoutPage = () => {
                         )}
                         <div className="space-y-3 max-h-64 overflow-y-auto pr-2 mb-4">
                             {/* MODIFIED: Use cartItem and access the nested item object */}
-                            {cartItems.map(cartItem => (
-                                <div key={cartItem.item._id} className="flex justify-between items-center text-sm">
-                                    <div>
-                                        <p className="font-semibold">{cartItem.item.name} <span className="text-gray-500">x{cartItem.quantity}</span></p>
+                            {cartItems.map(cartItem => {
+                                const hasDiscount = cartItem.item.discountPercentage && cartItem.item.discountPercentage > 0;
+                                const effectivePrice = hasDiscount ? 
+                                    cartItem.item.price * (1 - cartItem.item.discountPercentage / 100) : 
+                                    cartItem.item.price;
+                                return (
+                                    <div key={cartItem.item._id} className="flex justify-between items-center text-sm">
+                                        <div>
+                                            <p className="font-semibold">{cartItem.item.name} <span className="text-gray-500">x{cartItem.quantity}</span></p>
+                                            {hasDiscount && (
+                                                <p className="text-xs text-red-500">{cartItem.item.discountPercentage}% OFF</p>
+                                            )}
+                                        </div>
+                                        <div className="text-right">
+                                            {hasDiscount ? (
+                                                <>
+                                                    <p className="text-gray-700">₹{(effectivePrice * cartItem.quantity).toFixed(2)}</p>
+                                                    <p className="text-xs text-gray-500 line-through">₹{(cartItem.item.price * cartItem.quantity).toFixed(2)}</p>
+                                                </>
+                                            ) : (
+                                                <p className="text-gray-700">₹{(effectivePrice * cartItem.quantity).toFixed(2)}</p>
+                                            )}
+                                        </div>
                                     </div>
-                                    <p className="text-gray-700">₹{cartItem.item.price * cartItem.quantity}</p>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                         <div className="border-t pt-4 space-y-2">
                             <div className="flex justify-between">

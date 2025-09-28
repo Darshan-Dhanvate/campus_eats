@@ -87,11 +87,7 @@ const CanteenProfile = () => {
         formData.append('profileImage', file);
 
         try {
-            const response = await api.post('/canteens/upload/profile-image', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            });
+            const response = await api.post('/canteens/upload/profile-image', formData);
             
             if (response.data.success) {
                 // Update user state with new profile image

@@ -17,8 +17,13 @@ const menuItemStorage = multer.diskStorage({
         cb(null, uploadPath);
     },
     filename: (req, file, cb) => {
-        // Generate unique filename: canteenId_timestamp_originalname
-        const uniqueName = `${req.user._id}_${Date.now()}_${file.originalname}`;
+        // Generate unique filename. Auth may be disabled for this route, so do NOT rely on req.user
+        // Sanitize original filename (remove spaces & unsafe chars)
+        const original = file.originalname || 'image';
+        const safeOriginal = original.replace(/[^a-zA-Z0-9._-]/g, '_');
+        // Use canteen id if present, else 'na'
+        const canteenPart = req.user?._id ? String(req.user._id) : 'na';
+        const uniqueName = `${canteenPart}_${Date.now()}_${Math.round(Math.random()*1e9)}_${safeOriginal}`;
         cb(null, uniqueName);
     }
 });
@@ -53,11 +58,15 @@ const imageFileFilter = (req, file, cb) => {
 
 // Configure multer for menu items
 export const uploadMenuItemImage = multer({
-    storage: menuItemStorage,
+    storage: menuItemStorage,  
     limits: {
         fileSize: 5 * 1024 * 1024, // 5MB limit
     },
-    fileFilter: imageFileFilter
+    fileFilter: imageFileFilter,
+    onError: (err, next) => {
+        console.log('MULTER ERROR:', err);
+        next(err);
+    }
 }).single('image');
 
 // Configure multer for canteen profiles
