@@ -23,31 +23,43 @@ const CheckoutPage = () => {
 
         setLoading(true);
 
-        const orderData = {
-            canteen: canteenInfo._id,
-            // Use discounted prices for order items
-            items: cartItems.map(cartItem => {
-                const hasDiscount = cartItem.item.discountPercentage && cartItem.item.discountPercentage > 0;
-                const effectivePrice = hasDiscount ? 
-                    cartItem.item.price * (1 - cartItem.item.discountPercentage / 100) : 
-                    cartItem.item.price;
-                return {
-                    menuItem: cartItem.item._id,
-                    quantity: cartItem.quantity,
-                    price: effectivePrice,
-                };
-            }),
-            totalAmount: cartTotal,
-            // ADDED: Include the booked slot info in the order
-            bookedSlot: {
-                startTime: bookedSlot.startTime,
-                seatsOccupied: bookedSlot.seatsNeeded
-            },
-            paymentMethod: 'Card',
-            paymentStatus: 'Paid'
-        };
-
         try {
+            // Step 1: Reserve the chairs FIRST before placing the order
+            if (bookedSlot && bookedSlot.chairIds) {
+                console.log('🚀 Booking chairs:', bookedSlot.chairIds, 'types:', bookedSlot.chairIds.map(id => typeof id));
+                await api.post(`/canteens/${canteenInfo._id}/slots/book`, {
+                    startTime: bookedSlot.startTime,
+                    chairIds: bookedSlot.chairIds,
+                });
+                console.log('✅ Chairs booked successfully');
+            }
+
+            // Step 2: Place the order with chair information
+            const orderData = {
+                canteen: canteenInfo._id,
+                // Use discounted prices for order items
+                items: cartItems.map(cartItem => {
+                    const hasDiscount = cartItem.item.discountPercentage && cartItem.item.discountPercentage > 0;
+                    const effectivePrice = hasDiscount ? 
+                        cartItem.item.price * (1 - cartItem.item.discountPercentage / 100) : 
+                        cartItem.item.price;
+                    return {
+                        menuItem: cartItem.item._id,
+                        quantity: cartItem.quantity,
+                        price: effectivePrice,
+                    };
+                }),
+                totalAmount: cartTotal,
+                // Include the booked slot info with chair details
+                bookedSlot: {
+                    startTime: bookedSlot.startTime,
+                    chairIds: bookedSlot.chairIds || [],
+                    seatsOccupied: bookedSlot.seatsNeeded
+                },
+                paymentMethod: 'Card',
+                paymentStatus: 'Paid'
+            };
+
             await api.post('/orders', orderData);
             toast.success('Order placed successfully!');
             clearCart();
@@ -83,7 +95,7 @@ const CheckoutPage = () => {
                         {bookedSlot && (
                             <div className="bg-blue-50 text-blue-800 p-3 rounded-lg mb-4 text-sm">
                                 <p><strong>Slot Booked:</strong> {bookedSlot.startTime}</p>
-                                <p><strong>Seats Reserved:</strong> {bookedSlot.seatsNeeded}</p>
+                                <p><strong>Chairs Selected:</strong> {bookedSlot.chairIds ? `${bookedSlot.chairIds.length} chairs` : `${bookedSlot.seatsNeeded} seats`}</p>
                             </div>
                         )}
                         <div className="space-y-3 max-h-64 overflow-y-auto pr-2 mb-4">

@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from "react";
+import CanvasLayoutDesigner from "../canteen/CanvasLayoutDesigner";
+import api from "../../api/axiosConfig";
+import toast from "react-hot-toast";
 
 // Helper function to generate time slots in 30-min increments
 const generateTimeOptions = () => {
@@ -28,6 +31,9 @@ const EditProfileModal = ({ isOpen, onClose, onSave, user }) => {
   const [loading, setLoading] = useState(false);
   const [openingTime, setOpeningTime] = useState("9:00 AM");
   const [closingTime, setClosingTime] = useState("5:00 PM");
+  const [isLayoutDesignerOpen, setIsLayoutDesignerOpen] = useState(false);
+  const [currentLayout, setCurrentLayout] = useState(null);
+  const [totalChairs, setTotalChairs] = useState(0);
   const timeOptions = generateTimeOptions();
 
   useEffect(() => {
@@ -54,8 +60,37 @@ const EditProfileModal = ({ isOpen, onClose, onSave, user }) => {
           numberOfSeats: details.numberOfSeats || 0,
         },
       });
+
+      // Load existing layout if canteen
+      if (user.role === 'canteen') {
+        loadLayout();
+      }
     }
   }, [user, isOpen]);
+
+  const loadLayout = async () => {
+    try {
+      const { data } = await api.get('/canteens/layout');
+      setCurrentLayout(data.layout);
+      setTotalChairs(data.layout?.chairs?.length || 0);
+    } catch (error) {
+      console.log('No existing layout found or error loading layout');
+      setCurrentLayout(null);
+      setTotalChairs(0);
+    }
+  };
+
+  const handleLayoutSave = async (layout) => {
+    try {
+      await api.put('/canteens/layout', { layout });
+      setCurrentLayout(layout);
+      setTotalChairs(layout.chairs?.length || 0);
+      setIsLayoutDesignerOpen(false);
+      toast.success('Layout saved successfully!');
+    } catch (error) {
+      toast.error('Failed to save layout: ' + (error.response?.data?.message || error.message));
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -183,14 +218,24 @@ const EditProfileModal = ({ isOpen, onClose, onSave, user }) => {
                   </div>
                 </div>
                 <div>
-                  <label htmlFor="numberOfSeats" className="block text-sm font-medium text-gray-700">
-                    Number of Seats
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Seating Layout
                   </label>
-                  <input
-                    type="number" name="numberOfSeats" id="numberOfSeats" value={formData.canteenDetails.numberOfSeats} onChange={handleCanteenDetailsChange}
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    min="0"
-                  />
+                  <p className="text-sm text-gray-500 mb-3">
+                    Design your canteen's layout with tables and chairs. Each chair will get a unique number for booking.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setIsLayoutDesignerOpen(true)}
+                    className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors duration-200"
+                  >
+                    Design Layout ({totalChairs} chairs)
+                  </button>
+                  {totalChairs > 0 && (
+                    <p className="text-sm text-green-600 mt-2">
+                      ✓ Layout configured with {totalChairs} chairs
+                    </p>
+                  )}
                 </div>
               </>
             )}
@@ -211,6 +256,14 @@ const EditProfileModal = ({ isOpen, onClose, onSave, user }) => {
           </div>
         </form>
       </div>
+
+      {/* Canvas Layout Designer */}
+      <CanvasLayoutDesigner
+        isOpen={isLayoutDesignerOpen}
+        onClose={() => setIsLayoutDesignerOpen(false)}
+        onSave={handleLayoutSave}
+        initialLayout={currentLayout}
+      />
     </div>
   );
 };

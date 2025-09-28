@@ -9,7 +9,7 @@ const formatDateTime = (isoString) => {
 const ReceiptModal = ({ isOpen, onClose, order }) => {
     if (!isOpen || !order) return null;
 
-    const { canteen, items, totalAmount, status, createdAt, deliverySlot, _id } = order;
+    const { canteen, items, totalAmount, status, createdAt, deliverySlot, bookedSlot, _id } = order;
 
     const handlePrint = () => {
         const printContent = document.getElementById('receipt-content').innerHTML;
@@ -79,10 +79,23 @@ const ReceiptModal = ({ isOpen, onClose, order }) => {
                                 <p className="text-gray-600">Status:</p>
                                 <p className="font-semibold capitalize">{status}</p>
                             </div>
-                            {deliverySlot && (
+                            {(deliverySlot || bookedSlot) && (
                                 <div>
-                                    <p className="text-gray-600">Delivery Slot:</p>
-                                    <p className="font-semibold">{deliverySlot}</p>
+                                    <p className="text-gray-600">Time Slot:</p>
+                                    <p className="font-semibold">
+                                        {bookedSlot ? 
+                                            `${bookedSlot.startTime}${bookedSlot.endTime ? ` - ${bookedSlot.endTime}` : ''}` : 
+                                            deliverySlot
+                                        }
+                                    </p>
+                                    {bookedSlot && bookedSlot.chairIds && bookedSlot.chairIds.length > 0 && (
+                                        <>
+                                            <p className="text-gray-600 mt-2">Reserved Chairs:</p>
+                                            <p className="font-semibold">
+                                                Chair{bookedSlot.chairIds.length > 1 ? 's' : ''} {bookedSlot.chairIds.join(', ')}
+                                            </p>
+                                        </>
+                                    )}
                                 </div>
                             )}
                         </div>

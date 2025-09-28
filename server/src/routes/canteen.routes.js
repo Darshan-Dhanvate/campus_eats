@@ -13,6 +13,9 @@ import {
   bookCanteenSlot, // ADDED: Import the new controller
   uploadMenuItemImage,
   uploadCanteenProfileImage,
+  saveCanteenLayout,
+  getCanteenLayout,
+  getCanteenLayoutPublic,
 } from '../controllers/canteen.controller.js';
 import { protect, authorize } from '../middleware/auth.middleware.js';
 import { uploadMenuItemImage as uploadMenuImage, uploadCanteenProfileImage as uploadProfileImage } from '../middleware/upload.middleware.js';
@@ -69,10 +72,17 @@ router
     .route('/upload/profile-image')
     .post(protect, authorize('canteen'), uploadProfileImage, uploadCanteenProfileImage);
 
+// Layout management routes
+router
+    .route('/layout')
+    .get(protect, authorize('canteen'), getCanteenLayout)
+    .put(protect, authorize('canteen'), saveCanteenLayout);
+
 // --- Public Routes ---
 router.route('/').get(getAllCanteens);
 router.route('/:id').get(getCanteenById);
 router.route('/:id/menu').get(getCanteenMenu);
+router.route('/:canteenId/layout').get(getCanteenLayoutPublic);
 
 
 // ADDED: Route for students to book a slot at a specific canteen

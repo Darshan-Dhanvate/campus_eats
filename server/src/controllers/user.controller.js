@@ -2,23 +2,53 @@ import { User } from '../models/User.model.js';
 import { Order } from '../models/Order.model.js';
 import { Review } from '../models/Review.model.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { addMinutes, format, parse } from 'date-fns';
+import { addMinutes, addDays, format, parse } from 'date-fns';
 
-const generateDailySlots = (operatingHours, numberOfSeats) => {
+const generateDailySlots = (operatingHours, canteenLayout) => {
   console.log('Operating Hours Passed to Function:', operatingHours); 
-  console.log('Updating Seats', numberOfSeats);
+  console.log('Updating with layout chairs:', canteenLayout?.chairs?.length || 0);
   const allSlots = [];
   const baseDate = '2025-01-01';
 
-  let openTime = parse(`${baseDate} 11:59 PM`, 'yyyy-MM-dd h:mm a', new Date());
-  let closeTime = parse(`${baseDate} 11:59 PM`, 'yyyy-MM-dd h:mm a', new Date());
+  // Default to no operating hours if not properly set
+  let openTime = null;
+  let closeTime = null;
 
   if (operatingHours && operatingHours.includes(' - ')) {
     const [startTimeStr, endTimeStr] = operatingHours.split(' - ');
-    openTime = parse(`${baseDate} ${startTimeStr}`, 'yyyy-MM-dd h:mm a', new Date());
-    closeTime = parse(`${baseDate} ${endTimeStr}`, 'yyyy-MM-dd h:mm a', new Date());
+    try {
+      openTime = parse(`${baseDate} ${startTimeStr}`, 'yyyy-MM-dd h:mm a', new Date());
+      closeTime = parse(`${baseDate} ${endTimeStr}`, 'yyyy-MM-dd h:mm a', new Date());
+      
+      // Handle case where close time is before open time (next day)
+      if (closeTime <= openTime) {
+        closeTime = addDays(closeTime, 1);
+      }
+      
+      console.log('Parsed times:', { 
+        startTimeStr, 
+        endTimeStr, 
+        openTime: format(openTime, 'h:mm a'), 
+        closeTime: format(closeTime, 'h:mm a') 
+      });
+    } catch (error) {
+      console.error('Error parsing operating hours:', error, { startTimeStr, endTimeStr });
+      openTime = null;
+      closeTime = null;
+    }
   }
 
+  // If no valid operating hours, return empty slots
+  if (!openTime || !closeTime) {
+    console.log('No valid operating hours found, returning empty slots');
+    return [];
+  }
+
+  // Get available chair numbers from layout (use chairNumber, not random id)
+  const availableChairIds = canteenLayout?.chairs?.map(chair => chair.chairNumber) || [];
+  const totalChairs = availableChairIds.length;
+
+  // Only generate slots within operating hours
   for (let i = 0; i < 72; i++) {
     const minutesOffset = i * 20;
     const dayStart = parse(`${baseDate} 12:00 AM`, 'yyyy-MM-dd h:mm a', new Date());
@@ -26,11 +56,15 @@ const generateDailySlots = (operatingHours, numberOfSeats) => {
     const slotEnd = addMinutes(slotStart, 20);
     const isWithinHours = slotStart >= openTime && slotStart < closeTime;
 
-    allSlots.push({
-      startTime: format(slotStart, 'h:mm a'),
-      endTime: format(slotEnd, 'h:mm a'),
-      availableSeats: isWithinHours ? numberOfSeats : 0,
-    });
+    if (isWithinHours) {
+      allSlots.push({
+        startTime: format(slotStart, 'h:mm a'),
+        endTime: format(slotEnd, 'h:mm a'),
+        availableSeats: totalChairs,
+        availableChairs: [...availableChairIds],
+        occupiedChairs: []
+      });
+    }
   }
   return allSlots;
 };
@@ -88,11 +122,17 @@ const updateUserProfile = asyncHandler(async (req, res) => {
     }
 
     if (hasSlotInfoChanged) {
+      console.log('Slot info changed, regenerating slots with operating hours:', user.canteenDetails.operatingHours);
+      // Clear existing slots first
+      user.canteenDetails.dailySlots = [];
+      user.markModified('canteenDetails.dailySlots');
+      
+      // Generate new slots
       user.canteenDetails.dailySlots = generateDailySlots(
         user.canteenDetails.operatingHours,
-        // 👇 THIS IS THE FIX: Use the updated value from the user object
-        user.canteenDetails.numberOfSeats 
+        user.canteenDetails.canteenLayout
       );
+      console.log('Generated', user.canteenDetails.dailySlots.length, 'new slots');
     }
   }
 
@@ -121,4 +161,4 @@ const getStudentStats = asyncHandler(async (req, res) => {
   });
 });
 
-export { getUserProfile, updateUserProfile, getStudentStats };
+export { getUserProfile, updateUserProfile, getStudentStats, generateDailySlots };

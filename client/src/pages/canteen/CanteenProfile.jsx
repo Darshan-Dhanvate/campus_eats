@@ -184,7 +184,13 @@ const CanteenProfile = () => {
                                 <InfoField label="Phone Number" value={canteenDetails.phone || 'Not provided'} />
                                 <InfoField label="Address" value={canteenDetails.canteenAddress} />
                                 <InfoField label="Operating Hours" value={canteenDetails.operatingHours || 'Not set'} />
-                                <InfoField label="Number of Seats" value={canteenDetails.numberOfSeats ?? 'Not set'} />
+                                <InfoField 
+                                    label="Seating Layout" 
+                                    value={canteenDetails.canteenLayout?.chairs?.length ? 
+                                        `${canteenDetails.canteenLayout.chairs.length} chairs configured` : 
+                                        'Layout not set'
+                                    } 
+                                />
                             </div>
                         </div>
                     </div>

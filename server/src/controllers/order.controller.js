@@ -1,26 +1,46 @@
 import { Order } from '../models/Order.model.js';
 import { Review } from '../models/Review.model.js';
+import { User } from '../models/User.model.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 // @desc    Create new order
 // @route   POST /api/v1/orders
 // @access  Private
 const createOrder = asyncHandler(async (req, res) => {
-    const { canteen, items, totalAmount, paymentMethod, paymentStatus } = req.body;
+    const { canteen, items, totalAmount, paymentMethod, paymentStatus, bookedSlot } = req.body;
 
     if (!items || items.length === 0) {
         res.status(400);
         throw new Error('No order items provided');
     }
 
-    const order = new Order({
+    // Build order data
+    const orderData = {
         user: req.user._id,
         canteen,
         items,
         totalAmount,
         paymentMethod: paymentMethod || 'Card',
         paymentStatus: paymentStatus || 'Paid',
-    });
+    };
+
+    // Add booked slot information if provided
+    if (bookedSlot) {
+        const canteenData = await User.findById(canteen);
+        if (canteenData && canteenData.canteenDetails && canteenData.canteenDetails.dailySlots) {
+            const timeSlot = canteenData.canteenDetails.dailySlots.find(s => s.startTime === bookedSlot.startTime);
+            orderData.bookedSlot = {
+                startTime: bookedSlot.startTime,
+                endTime: timeSlot ? timeSlot.endTime : '',
+                chairIds: bookedSlot.chairIds || [],
+                seatsOccupied: bookedSlot.seatsOccupied || bookedSlot.chairIds?.length || 0
+            };
+            // For backward compatibility, also set deliverySlot
+            orderData.deliverySlot = `${bookedSlot.startTime}${timeSlot ? ` - ${timeSlot.endTime}` : ''}`;
+        }
+    }
+
+    const order = new Order(orderData);
 
     const createdOrder = await order.save();
     res.status(201).json(createdOrder);

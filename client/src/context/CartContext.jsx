@@ -37,8 +37,8 @@ export const CartProvider = ({ children }) => {
         localStorage.setItem('bookedSlot', JSON.stringify(bookedSlot));
     }, [cartItems, canteenInfo, bookedSlot]);
 
-    // MODIFIED: The function is now smarter about its two different jobs.
-    const addToCart = (item, canteen, slot, seatsNeeded) => {
+    // MODIFIED: Updated to handle chair IDs instead of seat count
+    const addToCart = (item, canteen, slot, chairIds) => {
         
         // First, check if the item already exists in the cart.
         const itemExists = cartItems.find(cartItem => cartItem.item._id === item._id);
@@ -73,7 +73,7 @@ export const CartProvider = ({ children }) => {
         // If cart is empty, set the canteen and slot info
         if (cartItems.length === 0) {
             setCanteenInfo(canteen);
-            setBookedSlot({ ...slot, seatsNeeded });
+            setBookedSlot({ ...slot, chairIds, seatsNeeded: chairIds.length });
         }
 
         // Add the new item to the cart state

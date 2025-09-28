@@ -66,6 +66,30 @@ const orderSchema = new mongoose.Schema(
             enum: ['Paid', 'Unpaid'],
             default: 'Paid',
         },
+        // Store booked slot information including chair details
+        bookedSlot: {
+            startTime: {
+                type: String,
+                required: false, // Made optional for backward compatibility
+            },
+            endTime: {
+                type: String,
+                required: false,
+            },
+            chairIds: [{
+                type: Number,
+                required: false,
+            }],
+            seatsOccupied: {
+                type: Number,
+                required: false,
+            }
+        },
+        // For backward compatibility with old deliverySlot field
+        deliverySlot: {
+            type: String,
+            required: false,
+        },
     },
     {
         timestamps: true,

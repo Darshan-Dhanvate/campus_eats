@@ -4,7 +4,7 @@ import api from '../../api/axiosConfig';
 import toast from 'react-hot-toast';
 import MenuItemCard from '../../components/student/MenuItemCard';
 import CartSidebar from '../../components/student/CartSidebar';
-import SlotSelectionModal from '../../components/common/SlotSelectionModal'; // Import the new modal
+import ChairSelectionModal from '../../components/common/ChairSelectionModal'; // Import the new modal
 import { useCart } from '../../context/CartContext'; // Import useCart
 
 const CanteenMenu = () => {
@@ -51,25 +51,15 @@ const CanteenMenu = () => {
     };
 
     // Handler to confirm the booking, passed to SlotSelectionModal
-    const handleConfirmBookingAndAddToCart = async (item, canteen, slot, seatsNeeded) => {
-        const toastId = toast.loading('Booking your slot...');
-        try {
-            // Step 1: Call the backend API to reserve the seats in the selected slot
-            await api.post(`/canteens/${canteen._id}/slots/book`, {
-                startTime: slot.startTime,
-                seatsNeeded: seatsNeeded,
-            });
+    const handleConfirmBookingAndAddToCart = async (item, canteen, slot, chairIds) => {
+        // DON'T reserve chairs yet - just add to cart with chair selection
+        // Chairs will be reserved only when the order is actually placed
+        
+        addToCart(item, canteen, slot, chairIds);
 
-            // Step 2: If the API call is successful, add the item to the cart
-            // You may need to update your CartContext to handle slot and seatsNeeded
-            addToCart(item, canteen, slot, seatsNeeded);
-
-            toast.success(`Slot booked for ${slot.startTime}!`, { id: toastId });
-            setIsModalOpen(false); // Close the modal on success
-
-        } catch (error) {
-            toast.error(error.response?.data?.message || 'Failed to book slot.', { id: toastId });
-        }
+        const chairCount = chairIds.length;
+        toast.success(`${chairCount} chair${chairCount > 1 ? 's' : ''} selected for ${slot.startTime}! Added to cart.`);
+        setIsModalOpen(false); // Close the modal on success
     };
 
     const SkeletonCard = () => (
@@ -151,7 +141,7 @@ const CanteenMenu = () => {
 
             {/* Render the modal conditionally */}
             {selectedItem && (
-                 <SlotSelectionModal 
+                 <ChairSelectionModal 
                     isOpen={isModalOpen}
                     onClose={() => setIsModalOpen(false)}
                     onConfirm={handleConfirmBookingAndAddToCart}

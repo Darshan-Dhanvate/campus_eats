@@ -14,6 +14,41 @@ const getAllCanteens = asyncHandler(async (req, res) => {
 const getCanteenById = asyncHandler(async (req, res) => {
     const canteen = await User.findById(req.params.id).select('-password');
     if (canteen && canteen.role === 'canteen') {
+        // TEMPORARY: Convert string chairIds to numbers in existing data
+        let dataUpdated = false;
+        if (canteen.canteenDetails?.dailySlots) {
+            canteen.canteenDetails.dailySlots.forEach(slot => {
+                if (slot.occupiedChairs && slot.occupiedChairs.length > 0) {
+                    const originalChairs = [...slot.occupiedChairs];
+                    slot.occupiedChairs = slot.occupiedChairs.map(chairId => {
+                        const numId = typeof chairId === 'string' ? parseInt(chairId, 10) : chairId;
+                        if (typeof chairId === 'string') dataUpdated = true;
+                        return numId;
+                    });
+                    console.log(`🔄 Converted chairs from [${originalChairs.join(', ')}] to [${slot.occupiedChairs.join(', ')}]`);
+                }
+            });
+        }
+        
+        // Save the updated data if needed
+        if (dataUpdated) {
+            await canteen.save();
+            console.log('💾 Saved converted chair IDs to database');
+        }
+        
+        // Log slot data being returned
+        console.log(`📤 Returning canteen data for ${canteen.canteenDetails?.canteenName}`);
+        if (canteen.canteenDetails?.dailySlots) {
+            const slotsWithBookings = canteen.canteenDetails.dailySlots.filter(s => s.occupiedChairs?.length > 0);
+            console.log(`📊 Slots with bookings (${slotsWithBookings.length}):`, 
+                slotsWithBookings.map(s => ({ 
+                    startTime: s.startTime, 
+                    occupiedChairs: s.occupiedChairs,
+                    occupiedChairTypes: s.occupiedChairs.map(c => typeof c),
+                    availableSeats: s.availableSeats 
+                }))
+            );
+        }
         res.status(200).json(canteen);
     } else {
         res.status(404);
@@ -202,11 +237,11 @@ const getCanteenAnalytics = asyncHandler(async (req, res) => {
 
 const bookCanteenSlot = asyncHandler(async (req, res) => {
     const { canteenId } = req.params;
-    const { startTime, seatsNeeded } = req.body;
+    const { startTime, chairIds } = req.body; // Changed from seatsNeeded to chairIds
 
-    if (!startTime || !seatsNeeded) {
+    if (!startTime || !chairIds || !Array.isArray(chairIds) || chairIds.length === 0) {
         res.status(400);
-        throw new Error('Slot start time and number of seats are required.');
+        throw new Error('Slot start time and chair IDs are required.');
     }
 
     const canteen = await User.findById(canteenId);
@@ -222,13 +257,63 @@ const bookCanteenSlot = asyncHandler(async (req, res) => {
         throw new Error('The selected time slot does not exist.');
     }
 
-    if (slot.availableSeats < seatsNeeded) {
+    // Check if all requested chairs are available
+    const alreadyOccupied = chairIds.filter(chairId => 
+        slot.occupiedChairs.includes(chairId)
+    );
+
+    if (alreadyOccupied.length > 0) {
         res.status(400);
-        throw new Error('Not enough available seats in this slot.');
+        throw new Error(`Chairs ${alreadyOccupied.join(', ')} are already occupied in this slot.`);
     }
 
-    // Decrement the available seats
-    slot.availableSeats -= seatsNeeded;
+    // Validate that all chairs exist in the layout
+    const layout = canteen.canteenDetails.canteenLayout;
+    if (layout && layout.chairs) {
+        const layoutChairIds = layout.chairs.map(chair => chair.chairNumber);
+        const invalidChairs = chairIds.filter(chairId => 
+            !layoutChairIds.includes(chairId)
+        );
+
+        if (invalidChairs.length > 0) {
+            res.status(400);
+            throw new Error(`Invalid chair IDs: ${invalidChairs.join(', ')}`);
+        }
+    }
+
+    // Book the chairs
+    console.log('🔴 BEFORE booking - occupiedChairs:', slot.occupiedChairs);
+    console.log('🟢 BEFORE booking - availableChairs:', slot.availableChairs);
+    console.log('📝 Booking chair IDs:', chairIds, 'types:', chairIds.map(id => typeof id));
+    
+    slot.occupiedChairs.push(...chairIds);
+    slot.availableChairs = slot.availableChairs.filter(chairId => 
+        !chairIds.includes(chairId)
+    );
+
+    console.log('🔴 AFTER booking - occupiedChairs:', slot.occupiedChairs);
+    console.log('🟢 AFTER booking - availableChairs:', slot.availableChairs);
+
+    // Update backward compatibility field
+    slot.availableSeats = slot.availableChairs.length;
+
+    // Update chair booking history in layout
+    if (layout && layout.chairs) {
+        chairIds.forEach(chairId => {
+            const chair = layout.chairs.find(c => c.chairNumber === chairId);
+            if (chair) {
+                if (!chair.bookingHistory) chair.bookingHistory = [];
+                chair.bookingHistory.push({
+                    slotId: slot._id,
+                    startTime: slot.startTime,
+                    endTime: slot.endTime,
+                    bookedBy: req.user._id
+                });
+                chair.isOccupied = true;
+            }
+        });
+        canteen.markModified('canteenDetails.canteenLayout');
+    }
 
     // Mark the array as modified so Mongoose knows to save the change
     canteen.markModified('canteenDetails.dailySlots');
@@ -236,10 +321,13 @@ const bookCanteenSlot = asyncHandler(async (req, res) => {
 
     res.status(200).json({
         success: true,
-        message: 'Slot booked successfully!',
+        message: `Successfully booked ${chairIds.length} chair(s)!`,
+        bookedChairs: chairIds,
         slot: {
             startTime: slot.startTime,
-            availableSeats: slot.availableSeats
+            availableSeats: slot.availableSeats,
+            occupiedChairs: slot.occupiedChairs,
+            availableChairs: slot.availableChairs
         }
     });
 });
@@ -321,12 +409,132 @@ const uploadCanteenProfileImage = asyncHandler(async (req, res) => {
     });
 });
 
+// @desc    Save canteen layout
+// @route   PUT /api/v1/canteens/layout
+// @access  Private (Canteen)
+const saveCanteenLayout = asyncHandler(async (req, res) => {
+    const { layout } = req.body;
+
+    if (!layout) {
+        res.status(400);
+        throw new Error('Layout data is required.');
+    }
+
+    // Validate layout structure
+    if (!layout.canvas || !layout.chairs || !Array.isArray(layout.chairs)) {
+        res.status(400);
+        throw new Error('Invalid layout structure.');
+    }
+
+    const canteen = await User.findById(req.user._id);
+    if (!canteen || canteen.role !== 'canteen') {
+        res.status(404);
+        throw new Error('Canteen not found.');
+    }
+
+    // Update the layout
+    canteen.canteenDetails.canteenLayout = layout;
+    
+    // Regenerate slots with new chair layout and operating hours restrictions
+    const { generateDailySlots } = await import('./user.controller.js');
+    console.log('Regenerating slots for layout change with operating hours:', canteen.canteenDetails.operatingHours);
+    canteen.canteenDetails.dailySlots = generateDailySlots(
+        canteen.canteenDetails.operatingHours,
+        canteen.canteenDetails.canteenLayout
+    );
+
+    canteen.markModified('canteenDetails.canteenLayout');
+    canteen.markModified('canteenDetails.dailySlots');
+    await canteen.save();
+
+    res.status(200).json({
+        success: true,
+        message: 'Layout saved successfully!',
+        layout: canteen.canteenDetails.canteenLayout
+    });
+});
+
+// @desc    Get canteen layout
+// @route   GET /api/v1/canteens/layout
+// @access  Private (Canteen)
+const getCanteenLayout = asyncHandler(async (req, res) => {
+    const canteen = await User.findById(req.user._id);
+    if (!canteen || canteen.role !== 'canteen') {
+        res.status(404);
+        throw new Error('Canteen not found.');
+    }
+
+    const layout = canteen.canteenDetails.canteenLayout || {
+        canvas: { width: 800, height: 600, scale: 1 },
+        borders: [],
+        tables: [],
+        chairs: [],
+        metadata: { totalChairs: 0, lastModified: new Date(), version: 1 }
+    };
+
+    res.status(200).json({
+        success: true,
+        layout
+    });
+});
+
+// @desc    Get canteen layout for students (public)
+// @route   GET /api/v1/canteens/:canteenId/layout
+// @access  Public
+const getCanteenLayoutPublic = asyncHandler(async (req, res) => {
+    const { canteenId } = req.params;
+    
+    const canteen = await User.findById(canteenId);
+    if (!canteen || canteen.role !== 'canteen') {
+        res.status(404);
+        throw new Error('Canteen not found.');
+    }
+
+    const layout = canteen.canteenDetails.canteenLayout || {
+        canvas: { width: 800, height: 600, scale: 1 },
+        borders: [],
+        tables: [],
+        chairs: [],
+        metadata: { totalChairs: 0, lastModified: new Date(), version: 1 }
+    };
+
+    // Include real-time chair availability for the current slots
+    const currentTime = new Date();
+    const currentSlot = canteen.canteenDetails.dailySlots.find(slot => {
+        // This is a simplified check - you might want more sophisticated time matching
+        const slotStart = new Date();
+        const [time, period] = slot.startTime.split(' ');
+        const [hours, minutes] = time.split(':');
+        let hour24 = parseInt(hours);
+        if (period === 'PM' && hour24 !== 12) hour24 += 12;
+        if (period === 'AM' && hour24 === 12) hour24 = 0;
+        slotStart.setHours(hour24, parseInt(minutes), 0, 0);
+        
+        const slotEnd = new Date(slotStart);
+        slotEnd.setMinutes(slotEnd.getMinutes() + 20);
+        
+        return currentTime >= slotStart && currentTime <= slotEnd;
+    });
+
+    if (currentSlot && layout.chairs) {
+        layout.chairs.forEach(chair => {
+            chair.isOccupied = currentSlot.occupiedChairs.includes(chair.id);
+        });
+    }
+
+    res.status(200).json({
+        success: true,
+        layout,
+        canteenName: canteen.canteenDetails.canteenName
+    });
+});
+
 export {
     getAllCanteens, getCanteenById, getCanteenMenu,
     getMyCanteenMenu, addMenuItem, updateMenuItem, deleteMenuItem,
     getMyCanteenOrders, updateOrderStatus, getCompletedOrderHistory,
     getCanteenAnalytics,
     bookCanteenSlot,
-    uploadMenuItemImage,
-    uploadCanteenProfileImage
+    uploadMenuItemImage, uploadCanteenProfileImage,
+    saveCanteenLayout, getCanteenLayout, getCanteenLayoutPublic
 };

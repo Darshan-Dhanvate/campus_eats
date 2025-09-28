@@ -41,7 +41,7 @@ const CartSidebar = () => {
             {bookedSlot && (
                 <div className="bg-blue-50 text-blue-800 p-3 rounded-lg mb-4 text-sm">
                     <p><strong>Slot Booked:</strong> {bookedSlot.startTime}</p>
-                    <p><strong>Seats Reserved:</strong> {bookedSlot.seatsNeeded}</p>
+                    <p><strong>Seats Reserved:</strong> {bookedSlot.chairIds ? `Chairs ${bookedSlot.chairIds.length}` : bookedSlot.seatsNeeded}</p>
                 </div>
             )}
 

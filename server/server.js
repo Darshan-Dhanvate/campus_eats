@@ -4,6 +4,8 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import connectDB from "./src/config/db.js";
 import { notFound, errorHandler } from "./src/middleware/error.middleware.js";
+import { initializeSlotSchedulers } from "./src/utils/slotReset.js";
+import { fixAllCanteenSlots } from "./src/utils/fixSlots.js";
 
 // Import Routes
 import authRoutes from "./src/routes/auth.routes.js";
@@ -53,8 +55,14 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 8000;
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(
     `🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`
   );
+  
+  // Fix all existing canteen slots once on startup (DISABLED - run only when needed)
+  // await fixAllCanteenSlots();
+  
+  // Initialize slot reset schedulers
+  initializeSlotSchedulers();
 });
