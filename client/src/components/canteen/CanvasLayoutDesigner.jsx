@@ -15,6 +15,11 @@ const CanvasLayoutDesigner = ({ isOpen, onClose, onSave, initialLayout = null })
     chairs: [],
     metadata: { totalChairs: 0, lastModified: new Date(), version: 1 }
   });
+  
+  // Drag and drop state
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragPreview, setDragPreview] = useState(null);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
   // Load initial layout if provided
   useEffect(() => {
@@ -22,6 +27,11 @@ const CanvasLayoutDesigner = ({ isOpen, onClose, onSave, initialLayout = null })
       setLayout(initialLayout);
     }
   }, [initialLayout]);
+
+  // Redraw canvas when layout or drag state changes
+  useEffect(() => {
+    drawCanvas();
+  }, [layout, selectedObject, isDragging, dragPreview]);
 
   // Auto-number chairs
   const getNextChairNumber = () => {
@@ -63,6 +73,11 @@ const CanvasLayoutDesigner = ({ isOpen, onClose, onSave, initialLayout = null })
     // Draw selection highlight
     if (selectedObject) {
       drawSelectionHighlight(ctx, selectedObject);
+    }
+    
+    // Draw drag preview
+    if (isDragging && dragPreview) {
+      drawDragPreview(ctx, dragPreview);
     }
   };
 
@@ -183,6 +198,72 @@ const CanvasLayoutDesigner = ({ isOpen, onClose, onSave, initialLayout = null })
     
     ctx.setLineDash([]);
   };
+  
+  const drawDragPreview = (ctx, preview) => {
+    ctx.save();
+    ctx.globalAlpha = 0.7; // Semi-transparent preview
+    
+    if (preview.type === 'table') {
+      ctx.translate(preview.position.x + preview.size.width/2, preview.position.y + preview.size.height/2);
+      
+      ctx.fillStyle = preview.style.color;
+      ctx.strokeStyle = preview.style.borderColor;
+      ctx.lineWidth = 2;
+      
+      if (preview.shape === 'rectangle' || preview.shape === 'square') {
+        ctx.fillRect(-preview.size.width/2, -preview.size.height/2, preview.size.width, preview.size.height);
+        ctx.strokeRect(-preview.size.width/2, -preview.size.height/2, preview.size.width, preview.size.height);
+      } else if (preview.shape === 'circle' || preview.shape === 'oval') {
+        ctx.beginPath();
+        ctx.ellipse(0, 0, preview.size.width/2, preview.size.height/2, 0, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.stroke();
+      }
+      
+      // Draw preview label
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '12px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(`Table ${layout.tables.length + 1}`, 0, 4);
+      
+    } else if (preview.type === 'chair') {
+      ctx.translate(preview.position.x + preview.size.width/2, preview.position.y + preview.size.height/2);
+      
+      ctx.fillStyle = preview.style.color;
+      ctx.strokeStyle = preview.style.borderColor;
+      ctx.lineWidth = 2;
+      
+      // Draw chair as rounded rectangle
+      const radius = 5;
+      const x = -preview.size.width/2;
+      const y = -preview.size.height/2;
+      const width = preview.size.width;
+      const height = preview.size.height;
+      
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      
+      // Draw chair number preview
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 10px Arial';
+      ctx.textAlign = 'center';
+      const nextChairNumber = getNextChairNumber();
+      ctx.fillText(nextChairNumber.toString(), 0, 3);
+    }
+    
+    ctx.restore();
+  };
 
   const getObjectBounds = (obj) => {
     if (obj.type === 'table') {
@@ -239,11 +320,24 @@ const CanvasLayoutDesigner = ({ isOpen, onClose, onSave, initialLayout = null })
   };
 
   const handleMouseMove = (e) => {
+    const pos = getMousePos(e);
+    setMousePosition(pos);
+    
+    if (isDragging && dragPreview) {
+      // Update drag preview position with grid snapping
+      const gridSize = 20;
+      const snappedPos = {
+        x: Math.round(pos.x / gridSize) * gridSize,
+        y: Math.round(pos.y / gridSize) * gridSize
+      };
+      setDragPreview(prev => ({ ...prev, position: snappedPos }));
+      return;
+    }
+    
     if (!isDrawing) return;
     
     e.preventDefault();
     e.stopPropagation();
-    const pos = getMousePos(e);
     
     if (selectedTool === 'select' && selectedObject && dragStart) {
       // Move selected object
@@ -258,6 +352,39 @@ const CanvasLayoutDesigner = ({ isOpen, onClose, onSave, initialLayout = null })
   const handleMouseUp = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    // Handle dropping object
+    if (isDragging && dragPreview) {
+      const pos = getMousePos(e);
+      const gridSize = 20;
+      const snappedPos = {
+        x: Math.round(pos.x / gridSize) * gridSize,
+        y: Math.round(pos.y / gridSize) * gridSize
+      };
+      
+      // Check if position is valid (not overlapping)
+      const size = dragPreview.type === 'table' ? dragPreview.size : { width: 30, height: 30 };
+      const overlaps = layout.tables.some(table => 
+        isOverlapping(snappedPos, size, table.position, table.size)
+      ) || layout.chairs.some(chair => 
+        isOverlapping(snappedPos, size, chair.position, chair.size)
+      );
+      
+      if (!overlaps) {
+        if (dragPreview.type === 'table') {
+          dropTable(snappedPos);
+        } else if (dragPreview.type === 'chair') {
+          dropChair(snappedPos);
+        }
+      } else {
+        toast.error('Cannot place object here - position is occupied!');
+      }
+      
+      setIsDragging(false);
+      setDragPreview(null);
+      return;
+    }
+    
     setIsDrawing(false);
     setDragStart(null);
   };
@@ -308,16 +435,56 @@ const CanvasLayoutDesigner = ({ isOpen, onClose, onSave, initialLayout = null })
     });
   };
 
+  // Smart grid placement system
+  const findNextAvailablePosition = (objectSize, gridSize = 20) => {
+    const canvasWidth = layout.canvas.width;
+    const canvasHeight = layout.canvas.height;
+    const margin = 40; // Keep objects away from edges
+    
+    // Start from top-left, move right then down
+    for (let y = margin; y < canvasHeight - objectSize.height - margin; y += gridSize) {
+      for (let x = margin; x < canvasWidth - objectSize.width - margin; x += gridSize) {
+        const testPos = { x, y };
+        
+        // Check if this position overlaps with any existing object
+        const overlaps = layout.tables.some(table => 
+          isOverlapping(testPos, objectSize, table.position, table.size)
+        ) || layout.chairs.some(chair => 
+          isOverlapping(testPos, objectSize, chair.position, chair.size)
+        );
+        
+        if (!overlaps) {
+          return testPos;
+        }
+      }
+    }
+    
+    // If no position found, place at a safe default
+    return { x: margin, y: margin };
+  };
+  
+  // Check if two rectangles overlap
+  const isOverlapping = (pos1, size1, pos2, size2) => {
+    const buffer = 10; // Add small buffer between objects
+    return !(pos1.x + size1.width + buffer < pos2.x || 
+             pos2.x + size2.width + buffer < pos1.x || 
+             pos1.y + size1.height + buffer < pos2.y || 
+             pos2.y + size2.height + buffer < pos1.y);
+  };
+
   const addTable = (pos) => {
     // Set size based on shape
     const size = tableShape === 'square' ? { width: 60, height: 60 } :
                  tableShape === 'circle' ? { width: 60, height: 60 } :
                  { width: 80, height: 40 }; // rectangle and oval
+    
+    // Find the next available grid position instead of using click position
+    const gridPosition = findNextAvailablePosition(size);
                  
     const newTable = {
       id: generateId(),
       name: `Table ${layout.tables.length + 1}`,
-      position: { x: pos.x - size.width/2, y: pos.y - size.height/2 },
+      position: gridPosition,
       size: size,
       shape: tableShape,
       rotation: 0,
@@ -333,12 +500,17 @@ const CanvasLayoutDesigner = ({ isOpen, onClose, onSave, initialLayout = null })
   };
 
   const addChair = (pos) => {
+    const chairSize = { width: 30, height: 30 };
+    
+    // Find the next available grid position instead of using click position
+    const gridPosition = findNextAvailablePosition(chairSize);
+    
     const newChair = {
       id: generateId(),
       chairNumber: getNextChairNumber(),
       tableId: null,
-      position: { x: pos.x - 15, y: pos.y - 15 },
-      size: { width: 30, height: 30 },
+      position: gridPosition,
+      size: chairSize,
       rotation: 0,
       style: { color: '#4A90E2', borderColor: '#357ABD' },
       isOccupied: false,
@@ -352,6 +524,76 @@ const CanvasLayoutDesigner = ({ isOpen, onClose, onSave, initialLayout = null })
     }));
     
     toast.success(`Chair ${newChair.chairNumber} added!`);
+  };
+
+  // Drag and drop functions
+  const startDragTable = () => {
+    const size = tableShape === 'square' ? { width: 60, height: 60 } :
+                 tableShape === 'circle' ? { width: 60, height: 60 } :
+                 { width: 80, height: 40 };
+    
+    setDragPreview({
+      type: 'table',
+      shape: tableShape,
+      size: size,
+      position: mousePosition,
+      style: { color: '#8B4513', borderColor: '#654321' }
+    });
+    setIsDragging(true);
+    toast.info('Drag to place the table, it will snap to grid automatically!');
+  };
+  
+  const startDragChair = () => {
+    setDragPreview({
+      type: 'chair',
+      size: { width: 30, height: 30 },
+      position: mousePosition,
+      style: { color: '#4A90E2', borderColor: '#357ABD' }
+    });
+    setIsDragging(true);
+    toast.info('Drag to place the chair, it will snap to grid automatically!');
+  };
+  
+  const dropTable = (position) => {
+    const size = dragPreview.size;
+    const newTable = {
+      id: generateId(),
+      name: `Table ${layout.tables.length + 1}`,
+      position: position,
+      size: size,
+      shape: dragPreview.shape,
+      rotation: 0,
+      style: dragPreview.style
+    };
+    
+    setLayout(prev => ({
+      ...prev,
+      tables: [...prev.tables, newTable]
+    }));
+    
+    toast.success('Table placed! Click on it to add chairs around it.');
+  };
+  
+  const dropChair = (position) => {
+    const newChair = {
+      id: generateId(),
+      chairNumber: getNextChairNumber(),
+      tableId: null,
+      position: position,
+      size: { width: 30, height: 30 },
+      rotation: 0,
+      style: dragPreview.style,
+      isOccupied: false,
+      bookingHistory: []
+    };
+    
+    setLayout(prev => ({
+      ...prev,
+      chairs: [...prev.chairs, newChair],
+      metadata: { ...prev.metadata, totalChairs: prev.chairs.length + 1 }
+    }));
+    
+    toast.success(`Chair ${newChair.chairNumber} placed!`);
   };
 
   const addChairsAroundTable = (table) => {
@@ -503,10 +745,10 @@ const CanvasLayoutDesigner = ({ isOpen, onClose, onSave, initialLayout = null })
           </button>
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); setSelectedTool('table'); }}
-            className={`px-4 py-2 rounded transition-colors ${selectedTool === 'table' ? 'bg-blue-500 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
+            onClick={(e) => { e.stopPropagation(); startDragTable(); }}
+            className="px-4 py-2 rounded transition-colors bg-green-500 hover:bg-green-600 text-white"
           >
-            Add Table
+            🪑 Add Table
           </button>
           
           {/* Table Shape Selector */}
@@ -528,10 +770,10 @@ const CanvasLayoutDesigner = ({ isOpen, onClose, onSave, initialLayout = null })
           )}
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); setSelectedTool('chair'); }}
-            className={`px-4 py-2 rounded transition-colors ${selectedTool === 'chair' ? 'bg-blue-500 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
+            onClick={(e) => { e.stopPropagation(); startDragChair(); }}
+            className="px-4 py-2 rounded transition-colors bg-blue-500 hover:bg-blue-600 text-white"
           >
-            Add Chair
+            💺 Add Chair
           </button>
           
           <div className="border-l border-gray-300 h-8 mx-2"></div>
