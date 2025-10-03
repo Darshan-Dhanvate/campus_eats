@@ -17,7 +17,7 @@ const MinusIcon = () => (
 
 const TrashIcon = () => (
      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+         <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
     </svg>
 );
 
@@ -26,11 +26,14 @@ const CartSidebar = () => {
     // MODIFIED: We now also get bookedSlot to display info
     const { cartItems, canteenInfo, bookedSlot, addToCart, removeFromCart, clearCart, cartTotal } = useCart();
 
+    // **FIX:** Filter out any items that are null, undefined, or don't have a nested 'item' property.
+    const validCartItems = cartItems.filter(cartItem => cartItem && cartItem.item);
+
     return (
         <div className="bg-white p-6 rounded-lg shadow-md">
             <div className="flex justify-between items-center border-b pb-4 mb-4">
                 <h3 className="font-bold text-xl text-brand-dark-blue">Your Order</h3>
-                {cartItems.length > 0 && (
+                {validCartItems.length > 0 && (
                     <button onClick={clearCart} className="text-sm text-red-500 hover:underline flex items-center">
                         <TrashIcon /> <span className="ml-1">Clear</span>
                     </button>
@@ -45,12 +48,12 @@ const CartSidebar = () => {
                 </div>
             )}
 
-            {cartItems.length === 0 ? (
+            {validCartItems.length === 0 ? (
                 <p className="text-center text-gray-500 py-12">Your cart is empty</p>
             ) : (
                 <div className="space-y-4 max-h-64 overflow-y-auto pr-2">
-                    {/* MODIFIED: Changed `item` to `cartItem` to avoid confusion */}
-                    {cartItems.map(cartItem => (
+                    {/* MODIFIED: Map over the filtered list of valid items */}
+                    {validCartItems.map(cartItem => (
                         <div key={cartItem.item._id} className="flex items-center justify-between">
                             <div>
                                 <p className="font-semibold text-sm">{cartItem.item.name}</p>
@@ -81,11 +84,11 @@ const CartSidebar = () => {
                 </div>
             )}
 
-            {cartItems.length > 0 && (
+            {validCartItems.length > 0 && (
                  <div className="border-t mt-4 pt-4">
                      <div className="flex justify-between text-lg font-bold">
                          <span>Total</span>
-                         <span>₹{cartTotal}</span>
+                         <span>₹{cartTotal.toFixed(2)}</span>
                      </div>
                       <Link to="/checkout">
                           <button className="w-full bg-[green] text-white font-bold py-3 rounded-lg mt-4 hover:bg-green-600 transition duration-300">

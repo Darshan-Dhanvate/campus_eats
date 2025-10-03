@@ -94,21 +94,3 @@ html, body, #root {
 .hover\:text-brand-dark-blue:hover {
   color: #1E3A8A;
 }
-
-html, body, #root {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  overflow: hidden; /* This is crucial to prevent scrolling and the border */
-  box-sizing: border-box; /* Ensures padding/border don't add to element's total width/height */
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
-}
