@@ -1,24 +1,64 @@
-
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 @import "tailwindcss";
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-
-body {
-  font-family: 'Inter', sans-serif;
-  background-color: #F8FAFC; /* brand-light-gray */
-  color: #0F172A; /* brand-text-dark */
+/*
+  1. Global Reset & Layout Fix
+  - Removes default browser margins/padding to prevent borders and scrolling.
+  - Sets a base font and ensures the app fills the entire screen.
+*/
+html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* FIX: Add a more specific rule for tab buttons to ensure text is visible */
+body {
+  margin: 0; /* FIX: Removes default browser margin */
+  padding: 0; /* FIX: Removes default browser padding */
+  font-family: 'Inter', sans-serif;
+  background-color: #F8FAFC; /* Default background */
+  color: #0F172A; /* Default text color */
+}
+
+/* FIX: Ensures the app's root elements fill the entire viewport height and width */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow-x: hidden; /* Prevents horizontal scrolling */
+}
+
+/*
+  2. Background Image Classes
+  - These classes are applied to the main div in each page component.
+*/
+.landing-page-background {
+  background-image: url('https://images.unsplash.com/photo-1543353071-873f17a7a088?q=80&w=2070&auto=format&fit=crop');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+.auth-page-background {
+  background-image: url('https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2071&auto=format&fit=crop');
+  background-size: cover;
+  background-position: center;
+}
+
+.canteen-auth-background {
+  background-image: url('https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=2047&auto=format&fit=crop');
+  background-size: cover;
+  background-position: center;
+}
+
+/*
+  3. Custom Utility & Brand Color Classes
+  - Note: These can often be replaced by configuring your tailwind.config.js file.
+*/
 .tab-button-inactive {
   color: #64748B; /* brand-text-light */
 }
 
-/* Brand Color Definitions */
 .text-brand-dark-blue {
   color: #1E3A8A;
 }
@@ -55,3 +95,20 @@ body {
   color: #1E3A8A;
 }
 
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden; /* This is crucial to prevent scrolling and the border */
+  box-sizing: border-box; /* Ensures padding/border don't add to element's total width/height */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}

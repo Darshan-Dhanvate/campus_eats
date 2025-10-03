@@ -2,19 +2,65 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
+import { PiEnvelopeSimple, PiLockSimple, PiEye, PiEyeClosed, PiStorefront, PiArrowLeft, PiGoogleLogo } from 'react-icons/pi';
 
-const CanteenIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-brand-dark-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h6m-6 4h6m-6 4h6" />
-    </svg>
-);
+// Reusing styles, but updating the focused label color to match the indigo theme.
+const pageStyles = `
+  .bg-image {
+    background-image: url('https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=1974&auto=format&fit=crop');
+    filter: blur(8px);
+    transform: scale(1.1);
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.6s ease-out forwards;
+    opacity: 0;
+    animation-fill-mode: forwards;
+  }
+  
+  /* Floating Label Styles */
+  .floating-label-group {
+    position: relative;
+  }
+
+  .floating-label-group .floating-label {
+    position: absolute;
+    top: 50%;
+    left: 3rem; /* Align with icon */
+    transform: translateY(-50%);
+    transition: all 0.2s ease-out;
+    pointer-events: none;
+    color: #9ca3af; /* gray-400 */
+  }
+
+  .floating-label-group input:not(:placeholder-shown) + .floating-label,
+  .floating-label-group input:focus + .floating-label {
+    top: -0.75rem;
+    left: 0.75rem;
+    font-size: 0.75rem;
+    padding: 0 0.25rem;
+    background-color: #1e293b; /* slate-800, needs to match card's bg */
+    color: #818cf8; /* indigo-300 */
+  }
+`;
 
 const CanteenLogin = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const { login } = useAuth();
-    const navigate = useNavigate(); // Get the navigate function from the router
+    const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -24,9 +70,8 @@ const CanteenLogin = () => {
         setLoading(true);
         try {
             const loggedInUser = await login(email, password);
-            // FIX: Only navigate AFTER the login is confirmed to be successful
             if (loggedInUser) {
-                navigate('/canteen/orders'); // Manually navigate to the dashboard
+                navigate('/canteen/orders'); 
             }
         } catch (error) {
             // Error toast is handled in AuthContext
@@ -35,63 +80,94 @@ const CanteenLogin = () => {
         }
     };
 
+    const handleGoogleSignIn = () => {
+        // TODO: Implement Google Sign-In logic here
+        toast('Google Sign-In coming soon!', { icon: '🚀' });
+    };
+
     return (
-        <div className="bg-white rounded-lg shadow-xl p-8 sm:p-12 w-full max-w-md">
-            <Link to="/" className="text-sm text-brand-text-light hover:text-brand-dark-blue mb-8 inline-block">
-                &larr; Back to Home
-            </Link>
-            <div className="text-center mb-8">
-                <div className="bg-blue-100 rounded-full p-4 mb-4 inline-block">
-                    <CanteenIcon />
-                </div>
-                <h1 className="text-2xl font-bold text-brand-dark-blue">Canteen Owner Login</h1>
-            </div>
-            <form onSubmit={handleSubmit} noValidate>
-                <div className="mb-4">
-                    <label htmlFor="email" className="block text-sm font-medium text-brand-text-light mb-2">
-                        Email Address
-                    </label>
-                    <input
-                        type="email"
-                        id="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full px-4 py-2 border border-brand-medium-gray rounded-lg focus:ring-[#111184] focus:border-[#111184]"
-                        placeholder="Enter your business email"
-                        required
-                    />
-                </div>
-                <div className="mb-6">
-                    <label htmlFor="password" className="block text-sm font-medium text-brand-text-light mb-2">
-                        Password
-                    </label>
-                    <input
-                        type="password"
-                        id="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full px-4 py-2 border border-brand-medium-gray rounded-lg focus:ring-[#111184] focus:border-[#111184]"
-                        placeholder="Enter your password"
-                        required
-                    />
-                </div>
-                <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full bg-[#111184] text-white font-bold py-3 px-4 rounded-lg hover:bg-opacity-90 transition duration-300 disabled:bg-slate-400"
+        <>
+            <style>{pageStyles}</style>
+            <div className="relative h-screen w-full flex items-center justify-center overflow-hidden bg-gray-900 p-4">
+                {/* Background & Overlay */}
+                <div className="absolute inset-0 z-0 bg-image"></div>
+                <div className="absolute inset-0 bg-black/70 z-0"></div>
+
+                <Link 
+                    to="/" 
+                    className="absolute top-6 left-6 z-20 flex items-center gap-2 text-white/70 hover:text-white transition-colors"
                 >
-                    {loading ? 'Signing In...' : 'Sign In'}
-                </button>
-            </form>
-            <p className="text-center text-sm text-brand-text-light mt-6">
-                Don't have an account?{' '}
-                <Link to="/register/canteen" className="font-medium text-brand-dark-blue hover:underline">
-                    Register canteen
+                    <PiArrowLeft /> Back to Home
                 </Link>
-            </p>
-        </div>
+
+                {/* Form Container */}
+                <div className="relative z-10 w-full max-w-md animate-slide-up">
+                    <div className="border border-white/10 bg-slate-800/50 backdrop-blur-lg rounded-2xl shadow-xl p-8 sm:p-12">
+                        <div className="text-center mb-8">
+                            <div className="inline-block bg-indigo-500/10 rounded-full p-4 mb-4">
+                                <PiStorefront className="text-5xl text-indigo-300" />
+                            </div>
+                            <h1 className="text-3xl font-bold text-white">Canteen Owner Login</h1>
+                            <p className="text-gray-400 mt-2">Manage your business.</p>
+                        </div>
+
+                        <form onSubmit={handleSubmit} noValidate className="space-y-6">
+                            {/* Email Input with Floating Label */}
+                            <div className="floating-label-group">
+                                <PiEnvelopeSimple className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 peer-focus:text-indigo-400 transition-colors" />
+                                <input
+                                    type="email" id="email" value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="peer w-full pl-12 pr-4 py-3 bg-white/5 text-white rounded-lg border-2 border-transparent focus:border-indigo-400/50 focus:bg-white/10 focus:ring-0 transition-all placeholder:text-transparent"
+                                    placeholder="Business Email" required
+                                />
+                                <label htmlFor="email" className="floating-label">Business Email</label>
+                            </div>
+
+                            {/* Password Input with Floating Label */}
+                            <div className="floating-label-group">
+                                <PiLockSimple className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 peer-focus:text-indigo-400 transition-colors" />
+                                <input
+                                    type={showPassword ? 'text' : 'password'} id="password" value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="peer w-full pl-12 pr-12 py-3 bg-white/5 text-white rounded-lg border-2 border-transparent focus:border-indigo-400/50 focus:bg-white/10 focus:ring-0 transition-all placeholder:text-transparent"
+                                    placeholder="Password" required
+                                />
+                                <label htmlFor="password" className="floating-label">Password</label>
+                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white">
+                                    {showPassword ? <PiEye /> : <PiEyeClosed />}
+                                </button>
+                            </div>
+                            
+                            <button type="submit" disabled={loading} className="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-500 transition-all duration-300 disabled:bg-indigo-600/50 transform hover:-translate-y-0.5 hover:shadow-lg hover:shadow-indigo-500/30">
+                                {loading ? 'Signing In...' : 'Sign In'}
+                            </button>
+                        </form>
+                        
+                        {/* OR Divider */}
+                        <div className="flex items-center my-8">
+                            <hr className="flex-grow border-t border-gray-600" />
+                            <span className="mx-4 text-xs text-gray-400">OR CONTINUE WITH</span>
+                            <hr className="flex-grow border-t border-gray-600" />
+                        </div>
+
+                        {/* Social Login Button */}
+                        <button onClick={handleGoogleSignIn} className="w-full flex justify-center items-center gap-3 bg-white/10 text-white font-semibold py-3 px-4 rounded-lg hover:bg-white/20 transition-all duration-300">
+                            <PiGoogleLogo weight="bold" />
+                            Sign in with Google
+                        </button>
+
+                        <p className="text-center text-sm text-gray-400 mt-8">
+                            Don't have an account?{' '}
+                            <Link to="/register/canteen" className="font-medium text-indigo-300 hover:underline">
+                                Register canteen
+                            </Link>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </>
     );
 };
 
 export default CanteenLogin;
-
