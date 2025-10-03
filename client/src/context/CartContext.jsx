@@ -110,6 +110,11 @@ export const CartProvider = ({ children }) => {
     };
 
     const cartTotal = cartItems.reduce((total, cartItem) => {
+        // **FIX:** Check if cartItem and cartItem.item are valid before accessing properties
+        if (!cartItem || !cartItem.item) {
+            return total; // Skip this malformed item
+        }
+
         const hasDiscount = cartItem.item.discountPercentage && cartItem.item.discountPercentage > 0;
         const effectivePrice = hasDiscount ? 
             cartItem.item.price * (1 - cartItem.item.discountPercentage / 100) : 
